@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function () {
+      // Base href derivado de la ruta real de la página: funciona en cualquier
+      // dominio y carpeta (/delivery/, /menu/delivery/, GitHub Pages, subdominio...)
+      const path = window.location.pathname;
+      const last = path.lastIndexOf('/');
+      const dir = last > 0 ? path.substring(0, last + 1) : '/';
+      const base = document.createElement('base');
+      base.href = dir;
+      document.head.appendChild(base);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rogasa Café - Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="./img/banner_evento.webp" fetchpriority="high">
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --c-bg: #08080a;
+      --c-surface: #111114;
+      --c-surface-2: #18181c;
+      --c-border: rgba(255,255,255,0.06);
+      --c-border-h: rgba(255,255,255,0.1);
+      --c-text: #f0ede6;
+      --c-text-2: #9a978e;
+      --c-text-3: #5c5a54;
+      --c-gold: #c9a84c;
+      --c-gold-dim: rgba(201,168,76,0.12);
+      --c-emerald: #4a9e75;
+      --c-emerald-d: rgba(74,158,117,0.12);
+      --c-warn: #c4883a;
+      --c-rose: #b85c6e;
+      --font-serif: 'Cormorant Garamond', serif;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--c-bg);
+      color: var(--c-text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 480px;
+      background-color: var(--c-bg);
+      position: relative;
+      padding-bottom: 70px; /* Space for bottom nav */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+    .view.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* TYPOGRAPHY */
+    h1, h2, h3, .serif { font-family: var(--font-serif); }
+    .title { font-size: 28px; font-weight: 600; color: var(--c-gold); margin-bottom: 16px; }
+    .subtitle { font-size: 14px; color: var(--c-text-2); margin-bottom: 24px; }
+
+    /* INPUTS & BUTTONS */
+    input, select {
+      width: 100%;
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      color: var(--c-text);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      color-scheme: dark;
+    }
+    input:focus { border-color: var(--c-gold); }
+    textarea {
+      width: 100%;
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      color: var(--c-text);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--c-gold); }
+    
+    button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      outline: none;
+      touch-action: manipulation; /* Elimina el retardo de toque en móvil */
+    }
+    .nav-item, .chip, .fav-card, .dish-card, .pay-method, .status-btn, .whatsapp-btn, .toggle { touch-action: manipulation; }
+    .btn-primary {
+      background: var(--c-gold);
+      color: var(--c-bg);
+      width: 100%;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+
+    .btn-outline {
+      border: 1px solid var(--c-gold);
+      color: var(--c-gold);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+      width: 100%;
+    }
+
+    /* ICONS */
+    svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* BOTTOM NAV */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      height: 70px;
+      background: rgba(17, 17, 20, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--c-border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--c-text-2);
+      width: 25%;
+      height: 100%;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .nav-item svg { width: 22px; height: 22px; margin-bottom: 4px; transition: transform 0.2s; }
+    .nav-item span { font-size: 10px; font-weight: 500; }
+    
+    .nav-item.active { color: var(--c-gold); }
+    .nav-item.active svg { stroke-width: 2; transform: scale(1.1); }
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      top: 6px;
+      width: 4px;
+      height: 4px;
+      background: var(--c-gold);
+      border-radius: 50%;
+    }
+    
+    .nav-item:active svg { transform: scale(0.92); }
+
+    .badge {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: var(--c-rose);
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      border: 2px solid var(--c-surface);
+      display: none;
+    }
+    .badge.visible { display: flex; }
+
+    /* FLOATING CART BUTTON */
+    .fab-cart {
+      position: fixed;
+      right: max(16px, calc(50% - 240px + 16px));
+      bottom: calc(70px + env(safe-area-inset-bottom) + 16px);
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e0bd5c, var(--c-gold));
+      color: var(--c-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 28px rgba(201, 168, 76, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
+      z-index: 90;
+      transition: transform 0.15s ease, opacity 0.2s ease;
+    }
+    .fab-cart svg { width: 24px; height: 24px; }
+    .fab-cart:active { transform: scale(0.92); }
+    .fab-cart .badge {
+      top: -3px;
+      right: -3px;
+      border-color: var(--c-surface);
+    }
+    .fab-cart.hidden { opacity: 0; pointer-events: none; transform: scale(0.8); }
+    @keyframes fabBump {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.14); }
+      100% { transform: scale(1); }
+    }
+    .fab-cart.bump { animation: fabBump 0.35s ease; }
+
+    /* PROMO CAROUSEL */
+    .carousel-container {
+      width: 100%;
+      height: 160px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .carousel-track {
+      display: flex;
+      width: 300%;
+      height: 100%;
+      animation: carouselScroll 12s infinite;
+    }
+    .carousel-slide {
+      width: 33.333%;
+      height: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      cursor: pointer;
+      background-size: cover;
+      background-position: center;
+      background-color: #18181c;
+    }
+    /* Fondo fotográfico por servicio con overlay oscuro para legibilidad del texto */
+    .slide-1 { background-image: linear-gradient(180deg, rgba(8,8,10,0.42), rgba(8,8,10,0.88)), url('./img/banner_evento.webp'); }
+    .slide-2 { background-image: linear-gradient(180deg, rgba(8,8,10,0.42), rgba(8,8,10,0.88)), url('./img/banner_degustacion.webp'); }
+    .slide-3 { background-image: linear-gradient(180deg, rgba(8,8,10,0.50), rgba(8,8,10,0.90)), url('./img/banner_musica.webp'); }
+    .slide-title, .slide-desc { text-shadow: 0 1px 14px rgba(0,0,0,0.65); }
+    
+    .slide-title { font-size: 22px; font-family: var(--font-serif); font-weight: 700; color: var(--c-gold); margin-bottom: 8px; }
+    .slide-desc { font-size: 13px; color: var(--c-text); line-height: 1.4; }
+    
+    @keyframes carouselScroll {
+      0%, 28% { transform: translateX(0); }
+      33.33%, 61% { transform: translateX(-33.333%); }
+      66.66%, 95% { transform: translateX(-66.666%); }
+      100% { transform: translateX(0); }
+    }
+
+    .carousel-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-border-h); }
+    /* Simulate dot active state based on animation */
+    .dot:nth-child(1) { animation: dot1 12s infinite; }
+    .dot:nth-child(2) { animation: dot2 12s infinite; }
+    .dot:nth-child(3) { animation: dot3 12s infinite; }
+    
+    @keyframes dot1 { 0%, 28%, 100% { background: var(--c-gold); } 33.33%, 95% { background: var(--c-border-h); } }
+    @keyframes dot2 { 0%, 28%, 66.66%, 100% { background: var(--c-border-h); } 33.33%, 61% { background: var(--c-gold); } }
+    @keyframes dot3 { 0%, 61%, 100% { background: var(--c-border-h); } 66.66%, 95% { background: var(--c-gold); } }
+
+    /* HORIZONTAL SCROLL LISTS */
+    .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .h-scroll {
+      display: flex;
+      overflow-x: auto;
+      gap: 16px;
+      padding-bottom: 16px;
+      margin-right: -20px;
+      padding-right: 20px;
+      scrollbar-width: none;
+    }
+    .h-scroll::-webkit-scrollbar { display: none; }
+
+    /* FAV CARDS */
+    .fav-card {
+      min-width: 140px;
+      width: 140px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    .fav-img { width: 100%; height: 100px; object-fit: cover; background: #222; }
+    .fav-info { padding: 12px; }
+    .fav-name { font-size: 13px; font-weight: 500; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fav-price { font-size: 13px; color: var(--c-gold); font-weight: 600; }
+
+    /* MENU LIST */
+    .search-bar { position: relative; margin-bottom: 16px; }
+    .search-bar svg { position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; color: var(--c-text-2); }
+    .search-bar input { padding-left: 36px; margin-bottom: 0; background: var(--c-surface); }
+
+    .chip-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 16px; margin-bottom: 8px; scrollbar-width: none; }
+    .chip-scroll::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 6px 16px;
+      border-radius: 20px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      font-size: 13px;
+      color: var(--c-text-2);
+      white-space: nowrap;
+    }
+    .chip.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); }
+
+    .dish-card {
+      display: flex;
+      padding: 12px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .dish-img { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; background: #222; margin-right: 12px; flex-shrink: 0; }
+    .dish-info { flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .dish-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; font-family: var(--font-serif); }
+    .dish-cat { font-size: 11px; color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .dish-price-row { display: flex; justify-content: space-between; align-items: center; }
+    .dish-price { font-size: 14px; font-weight: 600; color: var(--c-gold); }
+    .dish-price-bs { font-size: 11px; color: var(--c-text-3); margin-left: 6px; }
+    .dish-add { width: 28px; height: 28px; border-radius: 14px; background: var(--c-surface-2); border: 1px solid var(--c-border-h); display: flex; align-items: center; justify-content: center; color: var(--c-gold); }
+    
+    .agotado-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8, 8, 10, 0.7);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+    .agotado-badge {
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--c-text-2);
+    }
+
+    /* BOTTOM SHEETS */
+    .sheet-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .sheet-overlay.active { opacity: 1; pointer-events: auto; }
+    
+    .bottom-sheet {
+      position: fixed;
+      bottom: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: var(--c-surface);
+      border-radius: 20px 20px 0 0;
+      z-index: 201;
+      transition: bottom 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+    .bottom-sheet.active { bottom: 0; }
+    .sheet-handle { width: 40px; height: 4px; background: var(--c-border-h); border-radius: 2px; margin: 12px auto; }
+    .sheet-content { padding: 0 20px 20px; overflow-y: auto; }
+    
+    .sheet-img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 16px; }
+    .sheet-title { font-size: 24px; font-family: var(--font-serif); font-weight: 700; margin-bottom: 8px; }
+    .sheet-desc { font-size: 14px; color: var(--c-text-2); line-height: 1.5; margin-bottom: 20px; }
+    .sheet-price-row { display: flex; align-items: flex-end; margin-bottom: 24px; }
+    .sheet-price-usd { font-size: 24px; font-weight: 600; color: var(--c-gold); }
+    .sheet-price-bs { font-size: 14px; color: var(--c-text-2); margin-left: 12px; margin-bottom: 4px; }
+
+    /* INGREDIENTS & PAIRING */
+    .sheet-ingred { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .ingred-chip { background: var(--c-gold-dim); border: 1px solid rgba(201,168,76,0.35); color: var(--c-gold); font-size: 12px; padding: 5px 12px; border-radius: 16px; }
+    .pair-box { margin-top: 12px; background: var(--c-surface-2); border: 1px solid var(--c-border-h); border-left: 3px solid var(--c-gold); border-radius: 8px; padding: 14px; font-size: 14px; color: var(--c-text-2); line-height: 1.5; }
+
+    /* CART VIEW */
+    .cart-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
+    .cart-item-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; margin-right: 12px; }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .cart-item-price { font-size: 13px; color: var(--c-gold); }
+    .cart-controls { display: flex; align-items: center; gap: 12px; background: var(--c-surface-2); padding: 4px 8px; border-radius: 20px; }
+    .cart-controls button { color: var(--c-text); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+    
+    .pay-methods { display: flex; gap: 12px; margin-bottom: 24px; }
+    .pay-method {
+      flex: 1;
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      padding: 16px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--c-text-2);
+    }
+    .pay-method svg { width: 24px; height: 24px; }
+    .pay-method span { font-size: 11px; font-weight: 500; }
+    .pay-method.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); }
+
+    .summary-box { background: var(--c-surface-2); border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+    .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: var(--c-text-2); }
+    .summary-total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); font-size: 18px; font-weight: 600; color: var(--c-text); }
+    .summary-total-bs { font-size: 12px; color: var(--c-text-3); text-align: right; }
+
+    /* TRACKING VIEW */
+    .stepper { display: flex; flex-direction: column; gap: 32px; padding: 24px 0; position: relative; }
+    .step-line { position: absolute; left: 15px; top: 30px; bottom: 30px; width: 2px; background: var(--c-border); z-index: 0; }
+    .step-line-progress { position: absolute; left: 15px; top: 30px; width: 2px; background: var(--c-gold); z-index: 1; transition: height 0.5s ease; }
+    .step { display: flex; align-items: center; z-index: 2; opacity: 0.4; transition: opacity 0.3s; }
+    .step.active { opacity: 1; }
+    .step-icon { width: 32px; height: 32px; border-radius: 16px; background: var(--c-surface-2); border: 2px solid var(--c-border); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; margin-right: 16px; color: var(--c-text-2); transition: all 0.3s; }
+    .step.active .step-icon { background: var(--c-gold); border-color: var(--c-gold); color: var(--c-bg); }
+    .step.completed .step-icon { background: var(--c-emerald); border-color: var(--c-emerald); color: var(--c-bg); }
+    .step-text { font-size: 16px; font-weight: 500; }
+    .step-sub { font-size: 12px; color: var(--c-text-2); margin-top: 4px; }
+
+    /* KITCHEN & SETTINGS VIEWS */
+    .pin-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
+    .pin-input { font-size: 32px; text-align: center; letter-spacing: 8px; font-family: monospace; padding: 12px; margin-bottom: 24px; background: transparent; border: none; border-bottom: 2px solid var(--c-border); width: 200px; color: var(--c-gold); }
+    .pin-input:focus { border-color: var(--c-gold); }
+
+    .order-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; position: relative; }
+    .order-close { position: absolute; top: 12px; right: 12px; color: var(--c-text-3); }
+    .order-header { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--c-border); padding-bottom: 12px; }
+    .order-id { font-family: monospace; color: var(--c-gold); font-size: 14px; }
+    .order-time { font-size: 12px; color: var(--c-text-2); }
+    .order-client { font-weight: 600; margin-bottom: 4px; font-size: 15px; }
+    .order-meta { font-size: 12px; color: var(--c-text-2); margin-bottom: 12px; line-height: 1.5; }
+    .order-items { background: var(--c-surface-2); padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    .order-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    .order-item:last-child { margin-bottom: 0; }
+    .order-item-q { color: var(--c-gold); margin-right: 8px; }
+    
+    .status-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .status-btn { padding: 10px; font-size: 12px; border-radius: 6px; background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-2); text-align: center; }
+    .status-btn.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); font-weight: 600; }
+
+    .whatsapp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 6px; background: var(--c-emerald-d); color: var(--c-emerald); border: 1px solid var(--c-emerald); font-size: 13px; font-weight: 500; }
+
+    /* TOGGLES */
+    .settings-group { margin-bottom: 32px; }
+    .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
+    .settings-item-info { flex: 1; }
+    .settings-item-name { font-size: 14px; margin-bottom: 4px; }
+    .settings-item-cat { font-size: 11px; color: var(--c-text-2); }
+    
+    .toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--c-surface-2); transition: .3s; border-radius: 24px; border: 1px solid var(--c-border); }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: var(--c-text-2); transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--c-gold-dim); border-color: var(--c-gold); }
+    input:checked + .slider:before { transform: translateX(20px); background-color: var(--c-gold); }
+
+    /* EMPTY STATES */
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; color: var(--c-text-2); }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state p { font-size: 14px; margin-bottom: 24px; }
+
+    /* PERFORMANCE & UX */
+    .carousel-track { will-change: transform; }
+    img { -webkit-user-drag: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .view, .carousel-track, .dot, .bottom-sheet, .sheet-overlay, .step-icon, .step-line-progress, .fab-cart { animation: none !important; transition: none !important; }
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <!-- VIEW 1: INICIO -->
+  <div id="view-inicio" class="view active">
+    <div class="carousel-container" onclick="openServicesSheet()">
+      <div class="carousel-track">
+        <div class="carousel-slide slide-1">
+          <div class="slide-title">Reserva tu Noche Especial</div>
+          <div class="slide-desc">Celebra con nosotros. Espacios exclusivos para eventos y reuniones inolvidables.</div>
+        </div>
+        <div class="carousel-slide slide-2">
+          <div class="slide-title">Menu Degustacion del Chef</div>
+          <div class="slide-desc">Una experiencia de 5 tiempos que despertará todos tus sentidos.</div>
+        </div>
+        <div class="carousel-slide slide-3">
+          <div class="slide-title">Viernes de Musica en Vivo</div>
+          <div class="slide-desc">Acompaña tu cena con las mejores bandas de jazz y bossa nova locales.</div>
+        </div>
+      </div>
+      <div class="carousel-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Favoritos de la Semana</div>
+    <div class="h-scroll" id="fav-container">
+      <!-- Injected via JS -->
+    </div>
+
+    <div class="section-title" style="margin-top: 16px;">Nuestro Menú</div>
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="search-input" placeholder="Buscar platillos..." oninput="onSearchInput()">
+    </div>
+    
+    <div class="chip-scroll" id="category-chips">
+      <!-- Injected via JS -->
+    </div>
+
+    <div id="menu-container">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+
+  <!-- VIEW 2: CARRITO -->
+  <div id="view-carrito" class="view">
+    <h1 class="title">Tu Pedido</h1>
+    
+    <div id="cart-content">
+      <!-- Injected via JS -->
+    </div>
+    
+    <div id="cart-empty" class="empty-state">
+      <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+      <p>Tu carrito está vacío.</p>
+      <button class="btn-outline" onclick="switchTab('inicio')">Ver Menú</button>
+    </div>
+  </div>
+
+  <!-- VIEW 3: SEGUIMIENTO -->
+  <div id="view-seguimiento" class="view">
+    <h1 class="title">Seguimiento</h1>
+    
+    <div id="tracking-content">
+      <div class="subtitle">Pedido <span id="track-id" style="font-family:monospace;color:var(--c-gold)"></span></div>
+      
+      <div class="stepper">
+        <div class="step-line"></div>
+        <div class="step-line-progress" id="track-progress"></div>
+        
+        <div class="step" id="step-recibido">
+          <div class="step-icon">1</div>
+          <div>
+            <div class="step-text">Recibido</div>
+            <div class="step-sub">Hemos recibido tu orden</div>
+          </div>
+        </div>
+        
+        <div class="step" id="step-cocina">
+          <div class="step-icon">2</div>
+          <div>
+            <div class="step-text">En Cocina</div>
+            <div class="step-sub">Preparando tus platillos</div>
+          </div>
+        </div>
+        
+        <div class="step" id="step-reparto">
+          <div class="step-icon">3</div>
+          <div>
+            <div class="step-text">En Camino</div>
+            <div class="step-sub">El repartidor va hacia ti</div>
+          </div>
+        </div>
+        
+        <div class="step" id="step-entregado">
+          <div class="step-icon">4</div>
+          <div>
+            <div class="step-text">Entregado</div>
+            <div class="step-sub">¡Buen provecho!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="tracking-empty" class="empty-state">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <p>No tienes ningún pedido activo en este momento.</p>
+    </div>
+  </div>
+
+  <!-- VIEW 4: COCINA -->
+  <div id="view-cocina" class="view">
+    <h1 class="title">Cocina</h1>
+    
+    <div id="cocina-auth" class="pin-screen">
+      <div class="subtitle">Ingrese PIN de acceso</div>
+      <input type="password" class="pin-input" id="cocina-pin" maxlength="4" oninput="checkPin('cocina')">
+    </div>
+    
+    <div id="cocina-content" style="display:none">
+      <div id="orders-container">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 5: AJUSTES -->
+  <div id="view-ajustes" class="view">
+    <h1 class="title">Ajustes</h1>
+    
+    <div id="ajustes-auth" class="pin-screen">
+      <div class="subtitle">Ingrese PIN de acceso</div>
+      <input type="password" class="pin-input" id="ajustes-pin" maxlength="4" oninput="checkPin('ajustes')">
+    </div>
+    
+    <div id="ajustes-content" style="display:none">
+      <div class="settings-group">
+        <div class="section-title">Tasa de Cambio (Bs/USD)</div>
+        <div style="display:flex;gap:12px">
+          <input type="number" id="tasa-input" step="0.01">
+          <button class="btn-outline" style="width:auto" onclick="saveTasa()">Guardar</button>
+        </div>
+      </div>
+      
+      <div class="settings-group">
+        <div class="section-title">Disponibilidad de Platos</div>
+        <div class="subtitle" style="margin-bottom:12px">Apaga para marcar como agotado</div>
+        <div id="settings-disponibilidad"></div>
+      </div>
+      
+      <div class="settings-group">
+        <div class="section-title">Favoritos de la Semana</div>
+        <div class="subtitle" style="margin-bottom:12px">Selecciona los platos destacados</div>
+        <div id="settings-favoritos"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING CART BUTTON -->
+  <button class="fab-cart" id="fab-cart" onclick="switchTab('carrito')" aria-label="Ver carrito">
+    <div class="badge" id="cart-badge">0</div>
+    <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+  </button>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('inicio')" data-tab="inicio">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      <span>Inicio</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('seguimiento')" data-tab="seguimiento">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <span>Seguimiento</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('cocina')" data-tab="cocina">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      <span>Cocina</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('ajustes')" data-tab="ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Ajustes</span>
+    </div>
+  </div>
+
+  <!-- BOTTOM SHEETS -->
+  <div class="sheet-overlay" id="sheet-overlay" onclick="closeSheets()"></div>
+  
+  <!-- Dish Detail Sheet -->
+  <div class="bottom-sheet" id="sheet-dish">
+    <div class="sheet-handle"></div>
+    <div class="sheet-content">
+      <img src="" class="sheet-img" id="sd-img" alt="" loading="lazy" decoding="async" width="480" height="200">
+      <div class="sheet-title" id="sd-name"></div>
+      <div class="sheet-desc" id="sd-desc"></div>
+      <div class="sheet-ingred" id="sd-ingred"></div>
+      <div class="sheet-price-row">
+        <div class="sheet-price-usd" id="sd-price-usd"></div>
+        <div class="sheet-price-bs" id="sd-price-bs"></div>
+      </div>
+      <button class="btn-primary" id="sd-add-btn" onclick="addToCartFromSheet()">Agregar al Carrito</button>
+      <button class="btn-outline" id="sd-pair-btn" style="margin-top:12px" onclick="toggleRecomendacion()">Recomendar acompañamiento</button>
+      <div class="pair-box" id="sd-pair" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Reservation Form Sheet -->
+  <div class="bottom-sheet" id="sheet-reserva">
+    <div class="sheet-handle"></div>
+    <div class="sheet-content">
+      <div class="sheet-title" id="rv-title" style="margin-bottom:8px"></div>
+      <div class="subtitle" style="margin-bottom:20px">Completa tus datos y confirma tu reserva por WhatsApp</div>
+      <input type="text" id="rv-name" placeholder="Nombre completo">
+      <input type="tel" id="rv-phone" placeholder="Teléfono / WhatsApp">
+      <input type="date" id="rv-date">
+      <div style="display:flex;gap:12px">
+        <input type="time" id="rv-time" placeholder="Hora" style="flex:1">
+        <input type="number" id="rv-pax" min="1" max="50" placeholder="Personas" style="flex:1">
+      </div>
+      <textarea id="rv-msg" rows="3" placeholder="Comentarios o detalles (opcional)"></textarea>
+      <button class="btn-primary" onclick="sendReservaWhatsApp()">Enviar por WhatsApp</button>
+    </div>
+  </div>
+
+  <!-- Services Sheet -->
+  <div class="bottom-sheet" id="sheet-services">
+    <div class="sheet-handle"></div>
+    <div class="sheet-content">
+      <div class="sheet-title" style="margin-bottom:24px">Servicios Rogasa</div>
+      
+      <div class="settings-item">
+        <div class="settings-item-info">
+          <div class="settings-item-name" style="font-weight:600">Eventos y Reservaciones</div>
+          <div class="settings-item-cat">Celebra tu momento especial con nosotros</div>
+        </div>
+        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('evento')">Reservar</button>
+      </div>
+      
+      <div class="settings-item">
+        <div class="settings-item-info">
+          <div class="settings-item-name" style="font-weight:600">Menú Degustación</div>
+          <div class="settings-item-cat">Experiencia de 5 tiempos guiada por el chef</div>
+        </div>
+        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('degustacion')">Reservar</button>
+      </div>
+      
+      <div class="settings-item" style="border:none">
+        <div class="settings-item-info">
+          <div class="settings-item-name" style="font-weight:600">Música en Vivo (Viernes)</div>
+          <div class="settings-item-cat">Reserva tu mesa cerca del escenario</div>
+        </div>
+        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('musica')">Reservar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { db } from './db-v2.js';
+
+  // Shortcut para getElementById — definido al inicio porque se usa en renders tempranos
+  const $ = (id) => document.getElementById(id);
+
+  const WHATSAPP_NUM = '584225604660';
+
+  const MENU = [
+    {id:1, name:'Carpaccio De Lomito', price:18, cat:'entradas', img:'./img/carpaccio_lomito.webp',
+     desc:'Finas láminas de lomito marinadas con limón, aceite de oliva extra virgen y parmesano.',
+     ingred:['Lomito', 'Parmesano', 'Rúcula', 'Alcaparras', 'Limón'],
+     acomp:'Ligero y fresco: combínalo con la Fosforera Rogasa para abrir con sabor a mar.'},
+    {id:2, name:'Carpaccio De Pulpo', price:22, cat:'entradas', img:'./img/carpaccio_pulpo.webp',
+     desc:'Pulpo tierno en láminas con aceite de oliva, paprika ahumada y toques cítricos.',
+     ingred:['Pulpo', 'Aceite de Oliva', 'Paprika', 'Limón', 'Perejil'],
+     acomp:'Un blanco seco o el Jugo de Fresa Natural equilibran su sabor intenso.'},
+    {id:3, name:'Tequeños Hechos En Casa', price:10, cat:'entradas', img:'./img/tequenos_caseros.webp',
+     desc:'Masa casera rellena de queso semi-curado, fritos al momento.',
+     ingred:['Queso semi-curado', 'Masa casera', 'Guasacaca'],
+     acomp:'Ideales para compartir con la Ensalada Capresa Rogasa como entrada completa.'},
+    {id:4, name:'Ensalada Capresa Rogasa', price:14, cat:'entradas', img:'./img/ensalada_capresa.webp',
+     desc:'Tomate, mozzarella fresca y albahaca con reducción balsámica.',
+     ingred:['Tomate', 'Mozzarella fresca', 'Albahaca', 'Balsámico'],
+     acomp:'Refrescante: acompáñala con el Panuzzo Pollo Crispy para una cena ligera.'},
+    {id:5, name:'Fosforera Rogasa', price:16, cat:'entradas', img:'./img/fosforera_rogasa.webp',
+     desc:'Crema de mariscos con toques de ajo, perejil y mariscos frescos.',
+     ingred:['Mariscos', 'Crema', 'Ajo', 'Perejil', 'Cebollín'],
+     acomp:'Sigue con el Risotto Negro para una experiencia de mar completa.'},
+    {id:6, name:'Spaghetti Carbonara', price:24, cat:'pastas', img:'./img/carbonara.webp',
+     desc:'Pasta al dente con salsa de yema, panceta crujiente y parmesano.',
+     ingred:['Panceta', 'Yema de huevo', 'Parmesano', 'Pimienta negra'],
+     acomp:'La Torta Rústica de Chocolate es el cierre dulce perfecto.'},
+    {id:7, name:'Lasaña De La Abuela', price:22, cat:'pastas', img:'./img/lasana.webp',
+     desc:'Capas de pasta con ragú de carne, bechamel y gratinado de queso.',
+     ingred:['Ragú de carne', 'Bechamel', 'Parmesano', 'Albahaca'],
+     acomp:'Acompáñala con una Ensalada Capresa Rogasa para balancear.'},
+    {id:8, name:'Cartoccio De Lomito', price:26, cat:'pastas', img:'./img/lomito_florencia.webp',
+     desc:'Pasta envuelta en papel de horno con lomito, tomate y hierbas aromáticas.',
+     ingred:['Lomito', 'Tomate', 'Hierbas aromáticas', 'Parmesano'],
+     acomp:'Si vienes con antojo de pasta, el Spaghetti Carbonara es la pareja ideal.'},
+    {id:9, name:'Risotto Negro', price:28, cat:'pastas', img:'./img/risotto_negro.webp',
+     desc:'Arroz cremoso con tinta de calamar, mariscos y un toque de limón.',
+     ingred:['Tinta de calamar', 'Mariscos', 'Arroz', 'Limón'],
+     acomp:'La Fosforera Rogasa abre el apetito perfecto para este plato.'},
+    {id:10, name:'Lomito Florencia', price:36, cat:'carnes', img:'./img/lomito_florencia.webp',
+     desc:'Corte de lomito a la parrilla con salsa de champiñones y gratinado de queso.',
+     ingred:['Lomito', 'Champiñones', 'Queso gratinado', 'Papas'],
+     acomp:'Un vino tinto o el Risotto Negro lo convierten en una velada completa.'},
+    {id:11, name:'Hamburguesa Angus', price:20, cat:'carnes', img:'./img/hamburguesa.webp',
+     desc:'Carne angus jugosa con queso cheddar, tocineta y papas fritas.',
+     ingred:['Angus', 'Cheddar', 'Tocineta', 'Papas fritas'],
+     acomp:'Acompáñala con Tequeños Hechos En Casa para compartir.'},
+    {id:12, name:'Langostinos Tempura', price:28, cat:'carnes', img:'./img/langostinos_tempura.webp',
+     desc:'Langostinos crujientes en tempura con salsa agridulce.',
+     ingred:['Langostinos', 'Tempura', 'Salsa agridulce', 'Sésamo'],
+     acomp:'El Jugo de Fresa Natural refresca perfectamente este plato.'},
+    {id:13, name:'Pulpo Al Grill', price:30, cat:'carnes', img:'./img/pulpo_grill.webp',
+     desc:'Pulpo a la parrilla con papas, pimentón y alioli ahumado.',
+     ingred:['Pulpo', 'Papas', 'Pimentón', 'Alioli ahumado'],
+     acomp:'Combínalo con la Ensalada Capresa para una cena mediterránea.'},
+    {id:14, name:'Tartufo De Mortadela (Pizza)', price:22, cat:'pizzas', img:'./img/pizzas_tartufo.webp',
+     desc:'Pizza con crema de trufa, mortadela y mozzarella fundida.',
+     ingred:['Trufa', 'Mortadela', 'Mozzarella', 'Masa artesanal'],
+     acomp:'Una Focaccia Rústica Martina con aceite de oliva la hace aún mejor.'},
+    {id:15, name:'Focaccia Rústica Martina', price:16, cat:'pizzas', img:'./img/pizzas_tartufo.webp',
+     desc:'Focaccia artesanal con romero, sal marina y aceite de oliva.',
+     ingred:['Romero', 'Aceite de oliva', 'Sal marina', 'Masa madre'],
+     acomp:'Perfecta con la Pizza Tartufo de Mortadela para compartir.'},
+    {id:16, name:'Panuzzo Pollo Crispy', price:18, cat:'pizzas', img:'./img/hamburguesa.webp',
+     desc:'Pan crujiente relleno de pollo empanizado, lechuga y aderezo cremoso.',
+     ingred:['Pollo crispy', 'Lechuga', 'Aderezo cremoso', 'Pan artesanal'],
+     acomp:'Con unos Tequeños Hechos En Casa es la combinación ganadora.'},
+    {id:17, name:'Macarrón Con Queso', price:12, cat:'infantil', img:'./img/carbonara.webp',
+     desc:'Macarrones cremosos con mezcla de quesos gratinados. El favorito de los pequeños.',
+     ingred:['Queso cheddar', 'Queso crema', 'Macarrones'],
+     acomp:'La Torta Rústica de Chocolate hará felices a los niños.'},
+    {id:18, name:'Torta Rústica de Chocolate', price:10, cat:'postres', img:'./img/torta_chocolate.webp',
+     desc:'Torta húmeda de chocolate con corazón fundido y un toque de sal marina.',
+     ingred:['Chocolate 70%', 'Sal marina', 'Mantequilla', 'Huevo'],
+     acomp:'Un café espresso es la excusa perfecta para repetir.'},
+    {id:19, name:'Jugo de Fresa Natural', price:6, cat:'bebidas', img:'./img/jugo_fresa.webp',
+     desc:'Fresas naturales licuadas con un toque de azúcar, sin conservantes.',
+     ingred:['Fresas', 'Azúcar', 'Agua'],
+     acomp:'Acompaña cualquiera de nuestras pastas para un contraste dulce.'}
+  ];
+
+  const CATEGORIES = ['Todo', 'Entradas', 'Pastas', 'Carnes', 'Pizzas', 'Postres', 'Bebidas', 'Infantil'];
+
+  let state = {
+    cart: [],
+    tasa: parseFloat(localStorage.getItem('tasa')) || 45.00,
+    soldOut: JSON.parse(localStorage.getItem('sold_out_items') || '[]'),
+    favorites: JSON.parse(localStorage.getItem('weekly_favorites') || '[1,6,10,14,18]'),
+    activeCategory: 'Todo',
+    searchQuery: '',
+    selectedDishId: null,
+    payMethod: 'zelle',
+    dismissedOrders: JSON.parse(localStorage.getItem('dismissed_orders') || '[]'),
+    trackingId: localStorage.getItem('last_delivery_tracking_id') || null,
+    trackingSubId: null,
+    adminSubscribed: false,
+    reservaType: null,
+    unsubscribeTracking: null,
+    unsubscribeAdmin: null
+  };
+
+  // Set up global functions immediately
+  window.switchTab = switchTab;
+  window.closeSheets = closeSheets;
+  window.openServicesSheet = openServicesSheet;
+  window.openDishSheet = openDishSheet;
+  window.addToCartFromSheet = addToCartFromSheet;
+  window.openWhatsAppReserva = openWhatsAppReserva;
+  window.sendReservaWhatsApp = sendReservaWhatsApp;
+  window.toggleRecomendacion = toggleRecomendacion;
+  window.setCategory = setCategory;
+  window.renderMenu = renderMenu;
+  window.onSearchInput = onSearchInput;
+  window.addToCart = addToCart;
+  window.updateCartQuantity = updateCartQuantity;
+  window.setPayMethod = setPayMethod;
+  window.checkPin = checkPin;
+  window.saveTasa = saveTasa;
+  window.toggleSoldOut = toggleSoldOut;
+  window.toggleFavorite = toggleFavorite;
+  window.updateOrderStatus = updateOrderStatus;
+  window.dismissOrder = dismissOrder;
+  window.sendWhatsAppUpdate = sendWhatsAppUpdate;
+  window.checkout = checkout;
+
+  // Check URL for tracking
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.has('id')) {
+    state.trackingId = urlParams.get('id');
+    localStorage.setItem('last_delivery_tracking_id', state.trackingId);
+    switchTab('seguimiento');
+  }
+  
+  renderCategories();
+  renderFavorites();
+  renderMenu();
+  updateCartBadge();
+  
+  const tasaInput = document.getElementById('tasa-input');
+  if(tasaInput) {
+    tasaInput.value = state.tasa.toFixed(2);
+  }
+
+  // NAVIGATION
+  function switchTab(tabId) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`view-${tabId}`).classList.add('active');
+    const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+    if(navItem) navItem.classList.add('active');
+
+    if(tabId === 'carrito') renderCart();
+    if(tabId === 'seguimiento') initTracking();
+    if(tabId === 'cocina' && document.getElementById('cocina-content').style.display !== 'none') initCocina();
+    if(tabId === 'ajustes' && document.getElementById('ajustes-content').style.display !== 'none') initAjustes();
+
+    // Ocultar el botón flotante dentro de la vista del carrito
+    const fab = document.getElementById('fab-cart');
+    if(fab) fab.classList.toggle('hidden', tabId === 'carrito');
+
+    // Re-bloquear Cocina y Ajustes al cambiar de vista (pide PIN de nuevo)
+    if(tabId !== 'cocina') {
+      const auth = document.getElementById('cocina-auth');
+      const content = document.getElementById('cocina-content');
+      if(auth) { auth.style.display = ''; content.style.display = 'none'; }
+      const pin = document.getElementById('cocina-pin');
+      if(pin) pin.value = '';
+    }
+    if(tabId !== 'ajustes') {
+      const auth = document.getElementById('ajustes-auth');
+      const content = document.getElementById('ajustes-content');
+      if(auth) { auth.style.display = ''; content.style.display = 'none'; }
+      const pin = document.getElementById('ajustes-pin');
+      if(pin) pin.value = '';
+    }
+  }
+
+  // UTILS
+  let searchTimer = null;
+  function onSearchInput() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderMenu, 120);
+  }
+
+  function formatBs(usd) { return `Bs. ${(usd * state.tasa).toFixed(2)}`; }
+  function isSoldOut(id) { return state.soldOut.includes(id); }
+  function getDish(id) { return MENU.find(d => d.id === id); }
+
+  // INICIO VIEW
+  function renderCategories() {
+    const cont = $('category-chips');
+    cont.innerHTML = CATEGORIES.map(cat => 
+      `<div class="chip ${state.activeCategory === cat ? 'active' : ''}" onclick="setCategory('${cat}')">${cat}</div>`
+    ).join('');
+  }
+
+  function setCategory(cat) {
+    state.activeCategory = cat;
+    renderCategories();
+    renderMenu();
+  }
+
+  function renderFavorites() {
+    const cont = $('fav-container');
+    const favs = MENU.filter(d => state.favorites.includes(d.id));
+    cont.innerHTML = favs.map(d => `
+      <div class="fav-card" ${isSoldOut(d.id) ? '' : `onclick="openDishSheet(${d.id})"`}>
+        <img src="${d.img}" class="fav-img" alt="${d.name}" loading="lazy" decoding="async" width="140" height="100">
+        <div class="fav-info">
+          <div class="fav-name">${d.name}</div>
+          <div class="fav-price">$${d.price}</div>
+        </div>
+        ${isSoldOut(d.id) ? `
+        <div class="agotado-overlay">
+          <div class="agotado-badge">Agotado</div>
+        </div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function renderMenu() {
+    state.searchQuery = $('search-input').value.toLowerCase();
+    const cont = $('menu-container');
+    
+    let filtered = MENU;
+    if (state.activeCategory !== 'Todo') {
+      filtered = filtered.filter(d => d.cat.toLowerCase() === state.activeCategory.toLowerCase());
+    }
+    if (state.searchQuery) {
+      filtered = filtered.filter(d => d.name.toLowerCase().includes(state.searchQuery));
+    }
+
+    cont.innerHTML = filtered.map(d => `
+      <div class="dish-card" ${isSoldOut(d.id) ? '' : `onclick="openDishSheet(${d.id})"`}>
+        <img src="${d.img}" class="dish-img" alt="${d.name}" loading="lazy" decoding="async" width="80" height="80">
+        <div class="dish-info">
+          <div class="dish-name">${d.name}</div>
+          <div class="dish-cat">${d.cat}</div>
+          <div class="dish-price-row">
+            <div>
+              <span class="dish-price">$${d.price}</span>
+              <span class="dish-price-bs">${formatBs(d.price)}</span>
+            </div>
+            <button class="dish-add" onclick="event.stopPropagation(); ${isSoldOut(d.id) ? '' : `addToCart(${d.id})`}">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+        ${isSoldOut(d.id) ? `
+        <div class="agotado-overlay" style="border-radius:12px">
+          <div class="agotado-badge">Agotado</div>
+        </div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // BOTTOM SHEETS
+  function openServicesSheet() {
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-services').classList.add('active');
+  }
+
+  function openDishSheet(id) {
+    const d = getDish(id);
+    if(!d) return;
+    state.selectedDishId = id;
+    
+    document.getElementById('sd-img').src = d.img;
+    document.getElementById('sd-name').textContent = d.name;
+    document.getElementById('sd-price-usd').textContent = `$${d.price}`;
+    document.getElementById('sd-price-bs').textContent = formatBs(d.price);
+    document.getElementById('sd-desc').textContent = d.desc || 'Preparado con ingredientes frescos y la receta original de Rogasa Café.';
+    document.getElementById('sd-ingred').innerHTML = (d.ingred || []).map(i => `<span class="ingred-chip">${i}</span>`).join('');
+
+    const pairBox = document.getElementById('sd-pair');
+    pairBox.textContent = d.acomp || '';
+    pairBox.style.display = 'none';
+    document.getElementById('sd-pair-btn').textContent = 'Recomendar acompañamiento';
+    document.getElementById('sd-pair-btn').style.display = d.acomp ? '' : 'none';
+    
+    const btn = document.getElementById('sd-add-btn');
+    if(isSoldOut(id)) {
+      btn.textContent = 'Agotado';
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Agregar al Carrito';
+      btn.disabled = false;
+    }
+
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-dish').classList.add('active');
+  }
+
+  function toggleRecomendacion() {
+    const box = document.getElementById('sd-pair');
+    const show = box.style.display === 'none';
+    box.style.display = show ? 'block' : 'none';
+    document.getElementById('sd-pair-btn').textContent = show ? 'Ocultar recomendación' : 'Recomendar acompañamiento';
+  }
+
+  function closeSheets() {
+    document.getElementById('sheet-overlay').classList.remove('active');
+    document.querySelectorAll('.bottom-sheet').forEach(el => el.classList.remove('active'));
+  }
+
+  const RESERVA_SERVICIOS = {
+    evento:      { title: 'Eventos y Reservaciones',   nombre: 'Evento Especial' },
+    degustacion: { title: 'Menú Degustación del Chef', nombre: 'Menú Degustación del Chef' },
+    musica:      { title: 'Música en Vivo (Viernes)',  nombre: 'Música en Vivo (Viernes)' }
+  };
+
+  function openWhatsAppReserva(type) {
+    const s = RESERVA_SERVICIOS[type];
+    if(!s) return;
+    state.reservaType = type;
+
+    // Limpiar campos del formulario anterior
+    ['rv-name','rv-phone','rv-date','rv-time','rv-pax','rv-msg'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+
+    document.getElementById('rv-title').textContent = s.title;
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-services').classList.remove('active');
+    document.getElementById('sheet-reserva').classList.add('active');
+  }
+
+  function sendReservaWhatsApp() {
+    const name = $('rv-name').value.trim();
+    const phone = $('rv-phone').value.trim();
+    const date = $('rv-date').value;
+    const time = $('rv-time').value;
+    const pax = $('rv-pax').value.trim();
+    const extra = $('rv-msg').value.trim();
+
+    if(!name || !phone || !date) {
+      alert('Completa al menos nombre, teléfono y fecha.');
+      return;
+    }
+
+    const fecha = new Date(date + 'T00:00:00').toLocaleDateString('es-VE', {day:'2-digit', month:'2-digit', year:'numeric'});
+    const s = RESERVA_SERVICIOS[state.reservaType] || { nombre: state.reservaType };
+
+    let msg = `*ROGASA CAFE — Reserva*`;
+    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━`;
+    msg += `\n*Servicio:* ${s.nombre}`;
+    msg += `\n*Nombre:* ${name}`;
+    msg += `\n*Telefono:* ${phone}`;
+    if(date) msg += `\n*Fecha:* ${fecha}`;
+    if(time) msg += `\n*Hora:* ${time}`;
+    if(pax) msg += `\n*Personas:* ${pax}`;
+    if(extra) msg += `\n*Comentarios:* ${extra}`;
+    msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━`;
+    msg += `\nRogasa Cafe — Gracias por tu preferencia.`;
+
+    window.open(`https://wa.me/${WHATSAPP_NUM}?text=${encodeURIComponent(msg)}`, '_blank');
+    closeSheets();
+  }
+
+  // CART LOGIC
+  function addToCart(id) {
+    if(isSoldOut(id)) return;
+    const existing = state.cart.find(i => i.id === id);
+    if(existing) existing.q++;
+    else {
+      const d = getDish(id);
+      state.cart.push({ ...d, q: 1 });
+    }
+    updateCartBadge();
+  }
+
+  function addToCartFromSheet() {
+    addToCart(state.selectedDishId);
+    closeSheets();
+  }
+
+  function updateCartBadge() {
+    const badge = $('cart-badge');
+    const count = state.cart.reduce((s, i) => s + i.q, 0);
+    badge.textContent = count;
+    if(count > 0) badge.classList.add('visible');
+    else badge.classList.remove('visible');
+
+    // Pequeña animación al agregar un plato
+    const fab = document.getElementById('fab-cart');
+    if(fab && count > 0) {
+      fab.classList.remove('bump');
+      void fab.offsetWidth;
+      fab.classList.add('bump');
+    }
+  }
+
+  function updateCartQuantity(id, delta) {
+    const item = state.cart.find(i => i.id === id);
+    if(!item) return;
+    item.q += delta;
+    if(item.q <= 0) state.cart = state.cart.filter(i => i.id !== id);
+    updateCartBadge();
+    renderCart();
+  }
+
+  function setPayMethod(m) {
+    state.payMethod = m;
+    renderCart();
+  }
+
+  function renderCart() {
+    const content = $('cart-content');
+    const empty = $('cart-empty');
+    
+    if(state.cart.length === 0) {
+      content.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    
+    content.style.display = 'block';
+    empty.style.display = 'none';
+
+    // Preservar los datos de entrega ya escritos al re-renderizar el carrito
+    // (p.ej. al cambiar el método de pago o ajustar cantidades)
+    const prevEntrega = {
+      name: $('c-name') ? $('c-name').value : '',
+      phone: $('c-phone') ? $('c-phone').value : '',
+      sector: $('c-sector') ? $('c-sector').value : '',
+      ref: $('c-ref') ? $('c-ref').value : ''
+    };
+
+    let totalUsd = 0;
+    
+    let html = `<div style="margin-bottom:24px">`;
+    state.cart.forEach(i => {
+      totalUsd += i.price * i.q;
+      html += `
+        <div class="cart-item">
+          <img src="${i.img}" class="cart-item-img" alt="${i.name}" loading="lazy" decoding="async" width="60" height="60">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${i.name}</div>
+            <div class="cart-item-price">$${i.price}</div>
+          </div>
+          <div class="cart-controls">
+            <button onclick="updateCartQuantity(${i.id}, -1)">
+              <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <span style="font-size:14px;font-weight:600;min-width:16px;text-align:center">${i.q}</span>
+            <button onclick="updateCartQuantity(${i.id}, 1)">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    html += `
+      <div class="section-title">Datos de Entrega</div>
+      <input type="text" id="c-name" placeholder="Nombre completo">
+      <input type="tel" id="c-phone" placeholder="Teléfono">
+      <input type="text" id="c-sector" placeholder="Barrio / Sector">
+      <input type="text" id="c-ref" placeholder="Referencia de la dirección">
+      
+      <div class="section-title" style="margin-top:24px">Método de Pago</div>
+      <div class="pay-methods">
+        <div class="pay-method ${state.payMethod==='efectivo'?'active':''}" onclick="setPayMethod('efectivo')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg>
+          <span>Efectivo</span>
+        </div>
+        <div class="pay-method ${state.payMethod==='transferencia'?'active':''}" onclick="setPayMethod('transferencia')">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          <span>Transf.</span>
+        </div>
+        <div class="pay-method ${state.payMethod==='zelle'?'active':''}" onclick="setPayMethod('zelle')">
+          <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span>Zelle</span>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-row"><span>Subtotal</span><span>$${totalUsd.toFixed(2)}</span></div>
+        <div class="summary-row"><span>Delivery</span><span>$2.00</span></div>
+        <div class="summary-total">
+          <span>Total</span>
+          <div>
+            <div>$${(totalUsd + 2).toFixed(2)}</div>
+            <div class="summary-total-bs">${formatBs(totalUsd + 2)}</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="checkout()">Confirmar Pedido</button>
+    `;
+
+    content.innerHTML = html;
+
+    // Restaurar los datos de entrega tras reconstruir el HTML
+    const cName = $('c-name'), cPhone = $('c-phone'), cSector = $('c-sector'), cRef = $('c-ref');
+    if(cName) {
+      cName.value = prevEntrega.name;
+      cPhone.value = prevEntrega.phone;
+      cSector.value = prevEntrega.sector;
+      cRef.value = prevEntrega.ref;
+    }
+  }
+
+  async function checkout() {
+    const name = document.getElementById('c-name')?.value;
+    const phone = document.getElementById('c-phone')?.value;
+    const sector = document.getElementById('c-sector')?.value;
+    const ref = document.getElementById('c-ref')?.value;
+    
+    if(!name || !phone || !sector) {
+      alert("Por favor completa nombre, teléfono y sector.");
+      return;
+    }
+
+    const cartItems = state.cart.map(i => ({ ...i }));
+    const totalUsd = cartItems.reduce((s,i) => s + (i.price * i.q), 0) + 2;
+    const items = cartItems.map(i => ({id: i.id, nombre: i.name, cantidad: i.q, precio: i.price}));
+    
+    const pedido = {
+      id: db.generarIdUnico(),
+      cliente_nombre: name,
+      telefono: phone,
+      ubicacion: `${sector} - ${ref}`,
+      metodo_pago: state.payMethod,
+      total_usd: totalUsd,
+      total_bs: totalUsd * state.tasa,
+      items: items
+    };
+
+    await db.crearPedido(pedido);
+    
+    state.cart = [];
+    updateCartBadge();
+    state.trackingId = pedido.id;
+    localStorage.setItem('last_delivery_tracking_id', state.trackingId);
+    
+    const payLabels = {efectivo:'Efectivo',transferencia:'Transferencia Bancaria',zelle:'Zelle'};
+    const trackUrl = `https://traccionweb.com/domicilios?id=${pedido.id}`;
+    let msg = `*ROGASA CAFE — Pedido a Domicilio*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Pedido:* ${pedido.id}\n`;
+    msg += `*Cliente:* ${name}\n`;
+    msg += `*Telefono:* ${phone}\n`;
+    msg += `*Direccion:* ${sector}${ref ? ' — ' + ref : ''}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Detalle del Pedido:*\n\n`;
+    cartItems.forEach(i => {
+      const lineUsd = (i.price * i.q).toFixed(2);
+      const lineBs = (i.price * i.q * state.tasa).toFixed(2);
+      msg += `  ${i.q}x ${i.name}\n`;
+      msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
+    });
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    const subtotalUsd = totalUsd - 2;
+    msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
+    msg += `*Delivery:*  $2.00 / Bs. ${(2 * state.tasa).toFixed(2)}\n`;
+    msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Metodo de Pago:* ${payLabels[state.payMethod] || state.payMethod}\n`;
+    msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
+    msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
+    msg += `Rogasa Cafe — Gracias por tu preferencia.`;
+    window.open(`https://wa.me/${WHATSAPP_NUM}?text=${encodeURIComponent(msg)}`, '_blank');
+    
+    switchTab('seguimiento');
+  }
+
+  // TRACKING
+  function initTracking() {
+    const content = document.getElementById('tracking-content');
+    const empty = document.getElementById('tracking-empty');
+    
+    if(!state.trackingId) {
+      content.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    
+    content.style.display = 'block';
+    empty.style.display = 'none';
+    document.getElementById('track-id').textContent = state.trackingId;
+
+    // Ya estamos suscritos a este pedido: no re-suscribir al cambiar de pestaña
+    if(state.unsubscribeTracking && state.trackingSubId === state.trackingId) return;
+
+    if(state.unsubscribeTracking) state.unsubscribeTracking();
+    state.trackingSubId = state.trackingId;
+    state.unsubscribeTracking = db.suscribirAPedido(state.trackingId, (pedido) => {
+      if(!pedido) return;
+      updateStepper(pedido.estado);
+    });
+  }
+
+  function updateStepper(estado) {
+    const steps = ['recibido', 'cocina', 'reparto', 'entregado'];
+    const idx = steps.indexOf(estado);
+    
+    steps.forEach((s, i) => {
+      const el = document.getElementById(`step-${s}`);
+      el.classList.remove('active', 'completed');
+      if (i === idx) el.classList.add('active');
+      else if (i < idx) el.classList.add('completed', 'active');
+    });
+
+    const prog = $('track-progress');
+    prog.style.height = `${idx * 33.33}%`;
+  }
+
+  // KITCHEN ADMIN
+  function checkPin(view) {
+    const val = document.getElementById(`${view}-pin`).value;
+    if(val === '1234') {
+      document.getElementById(`${view}-auth`).style.display = 'none';
+      document.getElementById(`${view}-content`).style.display = 'block';
+      document.getElementById(`${view}-pin`).value = '';
+      if(view === 'cocina') initCocina();
+      if(view === 'ajustes') initAjustes();
+    }
+  }
+
+  function buildOrderCard(p) {
+    const time = new Date(p.creado_en || p.creado_el).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    return `
+      <div class="order-card" id="order-${p.id}">
+        <button class="order-close" onclick="dismissOrder('${p.id}')">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="order-header">
+          <span class="order-id">${p.id}</span>
+          <span class="order-time">${time}</span>
+        </div>
+        <div class="order-client">${p.cliente_nombre}</div>
+        <div class="order-meta">
+          Tel: ${p.telefono}<br>
+          Dir: ${p.ubicacion}<br>
+          ${(p.metodo_pago || '').toUpperCase()} - $${p.total_usd.toFixed(2)} / Bs. ${(p.total_bs || p.total_usd * 45).toFixed(2)}
+        </div>
+        <div class="order-items">
+          ${p.items.map(i => `<div class="order-item"><span class="order-item-q">${i.cantidad || i.q || 1}x</span><span>${i.nombre || i.name}</span></div>`).join('')}
+        </div>
+        <div class="status-buttons">
+          <button class="status-btn ${p.estado==='recibido'?'active':''}" onclick="updateOrderStatus('${p.id}', 'recibido')">Recibido</button>
+          <button class="status-btn ${p.estado==='cocina'?'active':''}" onclick="updateOrderStatus('${p.id}', 'cocina')">Cocina</button>
+          <button class="status-btn ${p.estado==='reparto'?'active':''}" onclick="updateOrderStatus('${p.id}', 'reparto')">Reparto</button>
+          <button class="status-btn ${p.estado==='entregado'?'active':''}" onclick="updateOrderStatus('${p.id}', 'entregado')">Entregado</button>
+        </div>
+        <button class="whatsapp-btn" onclick="sendWhatsAppUpdate('${p.telefono}', '${p.id}', '${p.estado}')">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          Notificar Cliente
+        </button>
+      </div>
+    `;
+  }
+
+  function initCocina() {
+    // Ya estamos escuchando: no re-suscribir (evita refetch en cada cambio de pestaña)
+    if(state.adminSubscribed) return;
+    state.adminSubscribed = true;
+
+    state.unsubscribeAdmin = db.suscribirATodosLosPedidos((pedidos) => {
+      const cont = $('orders-container');
+      const filtered = pedidos.filter(p => !state.dismissedOrders.includes(p.id));
+
+      if(filtered.length === 0) {
+        cont.innerHTML = `<div class="empty-state"><p>No hay pedidos activos.</p></div>`;
+        return;
+      }
+
+      const empty = cont.querySelector('.empty-state');
+      if(empty) empty.remove();
+
+      filtered.sort((a,b) => new Date(b.creado_en || b.creado_el) - new Date(a.creado_en || a.creado_el));
+
+      // Render diferencial: solo reconstruir las tarjetas que cambiaron
+      const htmlById = {};
+      filtered.forEach(p => { htmlById[p.id] = buildOrderCard(p); });
+
+      [...cont.children].forEach(child => {
+        if(child.id && child.id.startsWith('order-') && !htmlById[child.id.replace('order-','')]) child.remove();
+      });
+
+      filtered.forEach(p => {
+        const el = document.getElementById('order-' + p.id);
+        if(!el) {
+          cont.insertAdjacentHTML('beforeend', htmlById[p.id]);
+          const nuevo = document.getElementById('order-' + p.id);
+          if(nuevo) nuevo.dataset.html = htmlById[p.id];
+        } else if(el.dataset.html !== htmlById[p.id]) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = htmlById[p.id];
+          el.replaceWith(tmp.firstElementChild);
+          if(tmp.firstElementChild) tmp.firstElementChild.dataset.html = htmlById[p.id];
+        }
+      });
+    });
+  }
+
+  function updateOrderStatus(id, status) {
+    db.actualizarEstado(id, status);
+  }
+
+  function dismissOrder(id) {
+    state.dismissedOrders.push(id);
+    localStorage.setItem('dismissed_orders', JSON.stringify(state.dismissedOrders));
+    const el = document.getElementById(`order-${id}`);
+    if(el) el.style.display = 'none';
+  }
+
+  function sendWhatsAppUpdate(phone, id, status) {
+    const statusLabels = {
+      recibido: 'Recibido — Tu pedido ha sido confirmado',
+      cocina: 'En Cocina — Estamos preparando tu pedido',
+      reparto: 'En Camino — El repartidor se dirige a tu ubicacion',
+      entregado: 'Entregado — Tu pedido ha sido entregado'
+    };
+    const trackUrl = `https://traccionweb.com/domicilios?id=${id}`;
+    let msg = `*ROGASA CAFE*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Actualizacion de Pedido*\n\n`;
+    msg += `*Pedido:* ${id}\n`;
+    msg += `*Estado:* ${statusLabels[status] || status}\n\n`;
+    msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
+    msg += `Rogasa Cafe — Gracias por tu preferencia.`;
+    let cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // AJUSTES
+  function initAjustes() {
+    // Tasa is bound to input
+    
+    // Disponibilidad
+    const dispCont = $('settings-disponibilidad');
+    dispCont.innerHTML = MENU.map(d => `
+      <div class="settings-item">
+        <div class="settings-item-info">
+          <div class="settings-item-name">${d.name}</div>
+          <div class="settings-item-cat">${d.cat}</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${!isSoldOut(d.id) ? 'checked' : ''} onchange="toggleSoldOut(${d.id}, this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    `).join('');
+    
+    // Favoritos
+    const favCont = $('settings-favoritos');
+    favCont.innerHTML = MENU.map(d => `
+      <div class="settings-item">
+        <div class="settings-item-info">
+          <div class="settings-item-name">${d.name}</div>
+          <div class="settings-item-cat">${d.cat}</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${state.favorites.includes(d.id) ? 'checked' : ''} onchange="toggleFavorite(${d.id}, this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    `).join('');
+  }
+
+  function saveTasa() {
+    const val = parseFloat(document.getElementById('tasa-input').value);
+    if(!isNaN(val) && val > 0) {
+      state.tasa = val;
+      localStorage.setItem('tasa', val);
+      alert('Tasa guardada correctamente.');
+      renderMenu(); // Update prices
+    }
+  }
+
+  function toggleSoldOut(id, isAvailable) {
+    if(!isAvailable) {
+      if(!state.soldOut.includes(id)) state.soldOut.push(id);
+    } else {
+      state.soldOut = state.soldOut.filter(i => i !== id);
+    }
+    localStorage.setItem('sold_out_items', JSON.stringify(state.soldOut));
+    renderFavorites();
+    renderMenu();
+  }
+
+  function toggleFavorite(id, isFav) {
+    if(isFav) {
+      if(!state.favorites.includes(id)) state.favorites.push(id);
+    } else {
+      state.favorites = state.favorites.filter(i => i !== id);
+    }
+    localStorage.setItem('weekly_favorites', JSON.stringify(state.favorites));
+    renderFavorites();
+  }
+
+</script>
+</body>
+</html>
