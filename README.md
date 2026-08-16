@@ -5,7 +5,7 @@ Esta carpeta contiene todo lo necesario para el funcionamiento de la aplicación
 ## Estructura de la Carpeta
 
 1. **`index.html`**: La aplicación web completa (SPA) optimizada para dispositivos móviles.
-2. **`db-v2.js`**: El módulo de base de datos conectado a Google Firebase Realtime Database para sincronización global y en tiempo real.
+2. **`db-v3.js`**: El módulo de base de datos conectado a Google Firebase Realtime Database para sincronización global y en tiempo real. (Nombre versionado a propósito: evita que Cloudflare sirva una copia vieja en caché tras cada despliegue.)
 3. **`server.py`**: El servidor backend local en Python para pruebas y desarrollo.
 4. **`orders.json`**: La base de datos local donde el servidor Python guarda todos los pedidos cuando trabajas sin internet o en local.
 5. **`img/`**: Carpeta que contiene todas las imágenes optimizadas de los platos.
@@ -33,26 +33,20 @@ Todos los pedidos que realices localmente se guardarán de forma automática en 
 La app ya incluye todo el lado del cliente de las notificaciones push:
 
 - **`firebase-messaging-sw.js`**: service worker que muestra la notificación cuando la app está cerrada.
-- **`db-v2.js`**: pide permiso al hacer checkout y guarda el token del dispositivo en el pedido.
+- **`db-v3.js`**: pide permiso al hacer checkout y guarda el token del dispositivo en el pedido.
 - **`index.html`**: toast en primer plano + notificación del sistema en segundo plano (modo sin servidor).
 
 ### ¿Qué falta para que funcionen con la app cerrada? (una sola vez)
 
-1. **Conseguir la VAPID key** (llave pública de Web Push):
-   Firebase Console → tu proyecto (`rogasa-delivery`) → **Project settings → Cloud Messaging → Web Push certificates → Key pair**.
-   Copia esa llave y pégala en `db-v2.js` reemplazando:
-   ```js
-   const FCM_VAPID_KEY = 'REEMPLAZAR_CON_LA_VAPID_KEY_DEL_PROYECTO';
-   ```
-2. **Desplegar la Cloud Function** (gratis, plan Spark incluye 2M de invocaciones/mes):
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   cd functions && npm install && cd ..
-   firebase use rogasa-delivery
-   firebase deploy --only functions
-   ```
-3. **Subir el cambio de `db-v2.js`** a GitHub (Vercel lo publica solo).
+La **VAPID key ya está configurada** en `db-v3.js`. Solo falta desplegar la Cloud Function (gratis, plan Spark incluye 2M de invocaciones/mes):
+
+```bash
+npm install -g firebase-tools
+firebase login
+cd functions && npm install && cd ..
+firebase use rogasa-delivery
+firebase deploy --only functions
+```
 
 ### Cómo funciona
 
