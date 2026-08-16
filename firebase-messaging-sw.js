@@ -30,6 +30,8 @@ messaging.onBackgroundMessage((payload) => {
     body: body,
     icon: './img/logo.webp',
     badge: './img/logo.webp',
+    sound: './img/notif-ding.wav',
+    vibrate: [180, 90, 180],
     tag: data.orderId || 'pedido',
     renotify: true,
     data: { url: url }

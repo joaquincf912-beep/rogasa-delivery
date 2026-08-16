@@ -1284,28 +1284,28 @@
     showOrderNotification(data.orderId || state.pendingOrderId, estado, body);
   }
 
-  // Notifica el cambio de estado sin duplicados:
-  // - app visible → toast elegante + sonido
-  // - pestaña en segundo plano y FCM no disponible → notificación del sistema
-  // - FCM disponible → el service worker ya muestra la notificación del sistema
+  // Notifica el cambio de estado sin duplicados. El sonido se reproduce SIEMPRE
+  // (es el respaldo infalible): si la pestaña está visible → toast + sonido; si
+  // está en segundo plano → la notificación del sistema (SW o fallback local)
+  // refuerza el sonido. Antes el sonido se saltaba cuando FCM estaba activo y la
+  // pestaña oculta — y si el push fallaba en silencio, el cliente no oía NADA.
   function showOrderNotification(orderId, estado, body) {
     const key = (orderId || '') + ':' + (estado || '');
     if (!estado || key === lastNotified) return;
     lastNotified = key;
-    // Sonido: solo cuando esta página entrega la notificación (si FCM/SW la
-    // entrega, el sistema ya reproduce su propio sonido de notificación).
-    if (!(state.fcmEnabled && document.hidden)) playNotifSound();
+    playNotifSound();
     if (!document.hidden) {
       showToast(body, 'success');
       return;
     }
-    if (state.fcmEnabled) return;
+    if (state.fcmEnabled) return; // el SW mostrará la notificación del sistema
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try {
         const n = new Notification(CONFIG.nombre, {
           body,
           icon: './img/logo.webp',
           badge: './img/logo.webp',
+          sound: './img/notif-ding.wav',
           tag: orderId,
           data: { url: trackUrlFor(orderId) }
         });
@@ -1320,6 +1320,7 @@
   // de autoplay) y se mantiene listo: los listeners son persistentes, así el
   // audio queda desbloqueado aunque la notificación llegue más tarde.
   let notifAudioCtx = null;
+  let notifPlayCount = 0;
   function unlockNotifAudio() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1334,6 +1335,7 @@
 
   function playNotifTone() {
     if (!notifAudioCtx || notifAudioCtx.state !== 'running') return;
+    notifPlayCount++;
     const t0 = notifAudioCtx.currentTime;
     [880, 1318.51].forEach((freq, i) => {
       const osc = notifAudioCtx.createOscillator();
@@ -1342,7 +1344,7 @@
       osc.frequency.value = freq;
       const t = t0 + i * 0.16;
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.22, t + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.025);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
       osc.connect(gain);
       gain.connect(notifAudioCtx.destination);
@@ -1355,12 +1357,23 @@
     try {
       unlockNotifAudio(); // crea el contexto si hace falta (queda 'running' si ya hubo interacción)
       if (!notifAudioCtx) return;
+      const tryPlay = () => {
+        if (notifAudioCtx.state !== 'running') return;
+        playNotifTone();
+      };
       if (notifAudioCtx.state === 'suspended') {
-        // El navegador aún no deja sonar: esperamos a que se reanude y tocamos.
-        notifAudioCtx.resume().then(() => playNotifTone()).catch(() => {});
+        // resume() es asíncrono y algunos navegadores lo rechazan sin gesto:
+        // reintentamos un par de veces antes de rendirnos.
+        let tries = 0;
+        const retryResume = () => {
+          if (notifAudioCtx.state === 'running') { tryPlay(); return; }
+          if (tries++ >= 3) return;
+          notifAudioCtx.resume().then(tryPlay).catch(() => setTimeout(retryResume, 150));
+        };
+        retryResume();
         return;
       }
-      playNotifTone();
+      tryPlay();
     } catch (e) { /* si el navegador bloquea el audio, la notificación visual sigue */ }
   }
 
@@ -1509,6 +1522,13 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.enviarPushCocina = enviarPushCocina;
   window.mintCocinaToken = mintCocinaToken;
   window.playNotifSound = playNotifSound;
+  window.__notifAudioDebug = () => ({
+    ctx: notifAudioCtx ? notifAudioCtx.state : 'null',
+    hidden: document.hidden,
+    fcmEnabled: state.fcmEnabled,
+    acSupported: !!(window.AudioContext || window.webkitAudioContext),
+    plays: notifPlayCount
+  });
   window.dismissOrder = dismissOrder;
   window.sendWhatsAppUpdate = sendWhatsAppUpdate;
   window.checkout = checkout;
