@@ -860,6 +860,10 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
       <p>No tienes ningún pedido activo en este momento.</p>
     </div>
+
+    <button class="btn-outline" onclick="probarSonidoNotif()" style="margin-top:8px">
+      🔔 Probar sonido de notificación
+    </button>
   </div>
 
   <!-- VIEW 4: COCINA -->
@@ -1294,6 +1298,7 @@
     if (!estado || key === lastNotified) return;
     lastNotified = key;
     playNotifSound();
+    vibrarNotif();
     if (!document.hidden) {
       showToast(body, 'success');
       return;
@@ -1315,18 +1320,28 @@
   }
 
   // === SONIDO DE NOTIFICACIÓN ===
-  // Toque suave de dos notas generado con Web Audio (sin archivos externos).
-  // El contexto se crea dentro de la primera interacción del usuario (política
-  // de autoplay) y se mantiene listo: los listeners son persistentes, así el
-  // audio queda desbloqueado aunque la notificación llegue más tarde.
+  // === SONIDO DE NOTIFICACIÓN (doble vía, a prueba de balas) ===
+  // 1) Archivo WAV real (notif-ding.wav) con <audio> — lo más compatible y
+  //    confiable en móviles (iOS lo desbloquea con el primer toque).
+  // 2) Web Audio (osciladores) como respaldo si el archivo no carga.
+  // El audio se desbloquea en la primera interacción (política de autoplay) y
+  // los listeners son persistentes: queda listo aunque la notificación llegue
+  // minutos después.
+  let notifAudioEl = null;
   let notifAudioCtx = null;
   let notifPlayCount = 0;
   function unlockNotifAudio() {
     try {
+      if (!notifAudioEl) {
+        notifAudioEl = new Audio('./img/notif-ding.wav');
+        notifAudioEl.preload = 'auto';
+        // Toque en silencio para "enganchar" el elemento al gesto (iOS/autoplay)
+        notifAudioEl.volume = 0.0001;
+        notifAudioEl.play().catch(() => {});
+      }
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      if (!notifAudioCtx) notifAudioCtx = new AC();
-      if (notifAudioCtx.state === 'suspended') notifAudioCtx.resume().catch(() => {});
+      if (AC && !notifAudioCtx) notifAudioCtx = new AC();
+      if (notifAudioCtx && notifAudioCtx.state === 'suspended') notifAudioCtx.resume().catch(() => {});
     } catch (e) { /* sin audio si el navegador lo bloquea */ }
   }
   document.addEventListener('pointerdown', unlockNotifAudio);
@@ -1344,7 +1359,7 @@
       osc.frequency.value = freq;
       const t = t0 + i * 0.16;
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.35, t + 0.025);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
       osc.connect(gain);
       gain.connect(notifAudioCtx.destination);
@@ -1355,15 +1370,29 @@
 
   function playNotifSound() {
     try {
-      unlockNotifAudio(); // crea el contexto si hace falta (queda 'running' si ya hubo interacción)
+      unlockNotifAudio(); // crea elementos y los desbloquea si ya hubo interacción
+      notifPlayCount++;
+      // Vía 1: archivo WAV real (más compatible en móviles)
+      if (notifAudioEl) {
+        const p = notifAudioEl.play();
+        if (p) {
+          p.catch(() => { /* si falla (autoplay), intentamos Web Audio */ playNotifToneFallback(); });
+          return;
+        }
+        return;
+      }
+      playNotifToneFallback();
+    } catch (e) { playNotifToneFallback(); }
+  }
+
+  function playNotifToneFallback() {
+    try {
       if (!notifAudioCtx) return;
       const tryPlay = () => {
         if (notifAudioCtx.state !== 'running') return;
         playNotifTone();
       };
       if (notifAudioCtx.state === 'suspended') {
-        // resume() es asíncrono y algunos navegadores lo rechazan sin gesto:
-        // reintentamos un par de veces antes de rendirnos.
         let tries = 0;
         const retryResume = () => {
           if (notifAudioCtx.state === 'running') { tryPlay(); return; }
@@ -1375,6 +1404,23 @@
       }
       tryPlay();
     } catch (e) { /* si el navegador bloquea el audio, la notificación visual sigue */ }
+  }
+
+  // Botón de prueba: verifica el sonido al instante en cualquier dispositivo
+  function probarSonidoNotif() {
+    try {
+      unlockNotifAudio();
+      playNotifSound();
+      if (navigator.vibrate) navigator.vibrate(200);
+      showToast('🔔 Sonido de notificación' + (notifAudioEl ? ' (WAV)' : ' (Web Audio)'), 'success');
+    } catch (e) {
+      showToast('⚠️ No se pudo reproducir el sonido', 'error');
+    }
+  }
+
+  // Vibración táctil en el teléfono del cliente (refuerzo del sonido)
+  function vibrarNotif() {
+    try { if (navigator.vibrate) navigator.vibrate([160, 70, 160]); } catch (e) {}
   }
 
   // === PUSH DESDE COCINA (sin servidores) ===
@@ -1522,6 +1568,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.enviarPushCocina = enviarPushCocina;
   window.mintCocinaToken = mintCocinaToken;
   window.playNotifSound = playNotifSound;
+  window.probarSonidoNotif = probarSonidoNotif;
   window.__notifAudioDebug = () => ({
     ctx: notifAudioCtx ? notifAudioCtx.state : 'null',
     hidden: document.hidden,
@@ -2156,6 +2203,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     // 1) Abrir WhatsApp INMEDIATO: sin esperar Firebase, dentro del gesto del click
     //    (un await antes de window.open ralentiza la transición y puede disparar el bloqueador de popups)
     window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    // Sonido de confirmación: dentro del gesto del click (audio garantizado)
+    try { unlockNotifAudio(); playNotifSound(); } catch (e) {}
 
     // Notificaciones push: pedir permiso y registrar el token en el pedido (en segundo plano)
     ensureFCM(pedido.id);
