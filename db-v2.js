@@ -36,7 +36,7 @@ if (firebase && firebase.initializeApp) {
 // Cloud Messaging → Web Push certificates → Key pair. Sin ella, FCM no puede enviar
 // push con la app cerrada, y la app cae automáticamente al modo "pestaña abierta"
 // (notificaciones del sistema mientras la página de seguimiento siga abierta).
-const FCM_VAPID_KEY = 'REEMPLAZAR_CON_LA_VAPID_KEY_DEL_PROYECTO';
+const FCM_VAPID_KEY = 'BDAoUZbW6GaJSWyuTIxfAvqlHj2Wx212QheNV-1lIQLuaiLQZ_Bbm8pRk2PB_0nnk9_AV1VuL5Ot01SI1MGj0po';
 
 let messaging = null;
 let fcmEnabled = false;
