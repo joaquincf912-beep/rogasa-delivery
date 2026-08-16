@@ -23,6 +23,7 @@
   <link rel="preload" as="image" href="./img/banner_evento.webp" fetchpriority="high">
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
   <style>
     :root {
       --c-bg: #08080a;
@@ -154,6 +155,9 @@
       width: 100%;
     }
 
+    /* Tamaño táctil mínimo cómodo en todos los botones principales */
+    .btn-primary, .btn-outline, .whatsapp-btn, .status-btn { min-height: 44px; }
+
     /* ICONS */
     svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -181,7 +185,7 @@
       align-items: center;
       justify-content: center;
       color: var(--c-text-2);
-      width: 25%;
+      width: 20%;
       height: 100%;
       position: relative;
       transition: color 0.2s;
@@ -238,14 +242,22 @@
       justify-content: center;
       box-shadow: 0 10px 28px rgba(201, 168, 76, 0.35), 0 2px 8px rgba(0, 0, 0, 0.4);
       z-index: 90;
+      overflow: visible; /* el badge cuelga del borde y no debe recortarse */
       transition: transform 0.15s ease, opacity 0.2s ease;
     }
     .fab-cart svg { width: 24px; height: 24px; }
     .fab-cart:active { transform: scale(0.92); }
     .fab-cart .badge {
-      top: -3px;
-      right: -3px;
-      border-color: var(--c-surface);
+      top: -5px;
+      right: -5px;
+      min-width: 21px;
+      height: 21px;
+      border-radius: 11px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 2px solid var(--c-surface);
+      background: #e2484d;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
     .fab-cart.hidden { opacity: 0; pointer-events: none; transform: scale(0.8); }
     @keyframes fabBump {
@@ -350,18 +362,38 @@
     .search-bar svg { position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; color: var(--c-text-2); }
     .search-bar input { padding-left: 36px; margin-bottom: 0; background: var(--c-surface); }
 
-    .chip-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 16px; margin-bottom: 8px; scrollbar-width: none; }
+    .chip-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 16px; margin-bottom: 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
     .chip-scroll::-webkit-scrollbar { display: none; }
     .chip {
-      padding: 6px 16px;
-      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      flex: none;
+      min-height: 42px;
+      padding: 6px 18px;
+      border-radius: 22px;
       background: var(--c-surface);
       border: 1px solid var(--c-border);
       font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
       color: var(--c-text-2);
       white-space: nowrap;
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: pointer;
+      scroll-snap-align: center;
     }
-    .chip.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); }
+    .chip svg { width: 17px; height: 17px; flex: none; }
+    .chip.active {
+      background: var(--c-gold);
+      border-color: var(--c-gold);
+      color: var(--c-bg);
+      box-shadow: 0 4px 14px rgba(201, 168, 76, 0.35);
+    }
+    .chip.active svg { stroke-width: 2; }
 
     .dish-card {
       display: flex;
@@ -431,19 +463,55 @@
     }
     .bottom-sheet.active { bottom: 0; }
     .sheet-handle { width: 40px; height: 4px; background: var(--c-border-h); border-radius: 2px; margin: 12px auto; }
+    .sheet-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 38px;
+      height: 38px;
+      min-height: 38px;
+      border-radius: 50%;
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      color: var(--c-text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 6;
+      transition: transform 0.12s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .sheet-close:active { transform: scale(0.9); color: var(--c-gold); }
     .sheet-content { padding: 0 20px 20px; overflow-y: auto; }
     
-    .sheet-img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 16px; }
+    .sheet-img { width: 100%; height: 168px; object-fit: cover; border-radius: 12px; margin-bottom: 14px; }
     .sheet-title { font-size: 24px; font-family: var(--font-serif); font-weight: 700; margin-bottom: 8px; }
-    .sheet-desc { font-size: 14px; color: var(--c-text-2); line-height: 1.5; margin-bottom: 20px; }
-    .sheet-price-row { display: flex; align-items: flex-end; margin-bottom: 24px; }
+    .sheet-desc { font-size: 14px; color: var(--c-text-2); line-height: 1.5; margin-bottom: 16px; }
+    .sheet-price-row { display: flex; align-items: flex-end; margin-bottom: 20px; }
     .sheet-price-usd { font-size: 24px; font-weight: 600; color: var(--c-gold); }
     .sheet-price-bs { font-size: 14px; color: var(--c-text-2); margin-left: 12px; margin-bottom: 4px; }
 
     /* INGREDIENTS & PAIRING */
     .sheet-ingred { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
     .ingred-chip { background: var(--c-gold-dim); border: 1px solid rgba(201,168,76,0.35); color: var(--c-gold); font-size: 12px; padding: 5px 12px; border-radius: 16px; }
-    .pair-box { margin-top: 12px; background: var(--c-surface-2); border: 1px solid var(--c-border-h); border-left: 3px solid var(--c-gold); border-radius: 8px; padding: 14px; font-size: 14px; color: var(--c-text-2); line-height: 1.5; }
+    .pair-box { margin-top: 12px; background: var(--c-surface-2); border: 1px solid var(--c-border-h); border-left: 3px solid var(--c-gold); border-radius: 8px; padding: 12px; font-size: 13.5px; color: var(--c-text-2); line-height: 1.45; }
+    .pair-add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 16px;
+      min-height: 42px;
+      border-radius: 8px;
+      background: var(--c-gold);
+      color: var(--c-bg);
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.12s ease, background-color 0.2s ease, opacity 0.2s ease;
+    }
+    .pair-add-btn:active { transform: scale(0.97); }
+    .pair-add-btn.added { background: var(--c-emerald); }
 
     /* CART VIEW */
     .cart-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
@@ -513,6 +581,76 @@
 
     /* TOGGLES */
     .settings-group { margin-bottom: 32px; }
+
+    /* PUSH NOTIFICATIONS HINT */
+    .push-hint {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-left: 3px solid var(--c-gold);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* ADMIN PANEL */
+    .admin-add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1.5px dashed var(--c-gold);
+      color: var(--c-gold);
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      width: 100%;
+      min-height: 48px;
+      margin-bottom: 16px;
+      transition: background 0.2s;
+    }
+    .admin-add-btn:hover { background: rgba(217, 164, 65, 0.08); }
+    .admin-dish-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .admin-dish-row:last-child { border-bottom: none; }
+    .admin-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--c-surface-2);
+    }
+    .admin-dish-info { flex: 1; min-width: 0; }
+    .admin-dish-name { font-size: 14px; font-weight: 600; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .admin-dish-cat { font-size: 12px; color: var(--c-text-2); }
+    .admin-dish-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .admin-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--c-border);
+      color: var(--c-text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .admin-icon-btn:hover { color: var(--c-gold); border-color: var(--c-gold); }
+    .admin-icon-btn.danger:hover { color: var(--c-rose); border-color: var(--c-rose); }
+    .admin-icon-btn.confirm { color: var(--c-rose); border-color: var(--c-rose); background: rgba(226, 72, 77, 0.1); }
+    .admin-hint { font-size: 12px; color: var(--c-text-2); margin: -6px 0 14px; }
+    .admin-save-row { display: flex; gap: 12px; }
+    .admin-save-row .btn-primary, .admin-save-row .btn-outline { flex: 1; margin-top: 4px; }
+    .field-error { border-color: var(--c-rose) !important; }
     .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
     .settings-item-info { flex: 1; }
     .settings-item-name { font-size: 14px; margin-bottom: 4px; }
@@ -533,8 +671,92 @@
     /* PERFORMANCE & UX */
     .carousel-track { will-change: transform; }
     img { -webkit-user-drag: none; }
+
+    /* TOAST NOTIFICATIONS */
+    .toast-wrap {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 448px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(24, 24, 28, 0.98);
+      border: 1px solid var(--c-border-h);
+      border-left: 3px solid var(--c-gold);
+      border-radius: 10px;
+      padding: 13px 16px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+      animation: toastIn 0.28s cubic-bezier(0.21, 1.02, 0.73, 1);
+      touch-action: manipulation;
+    }
+    .toast.leaving { animation: toastOut 0.25s ease forwards; }
+    .toast-error { border-left-color: var(--c-rose); }
+    .toast-error .toast-ic { background: var(--c-rose); }
+    .toast-success { border-left-color: var(--c-emerald); }
+    .toast-success .toast-ic { background: var(--c-emerald); }
+    .toast-ic {
+      flex: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--c-bg);
+    }
+    .toast-ic svg { width: 14px; height: 14px; }
+    .toast-msg { font-size: 13.5px; line-height: 1.45; color: var(--c-text); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
+
+    /* Campos con datos faltantes */
+    .field-error { border-color: var(--c-rose) !important; }
+    .field-error:focus { border-color: var(--c-rose) !important; }
+
+    /* PRESS & RIPPLE: feedback táctil profesional en cada pulsación */
+    button, .nav-item, .chip, .dish-card, .fav-card, .pay-method {
+      position: relative;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 5;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.1) 70%);
+      transform: scale(0);
+      animation: rippleRun 0.55s cubic-bezier(0.2, 0.6, 0.35, 1) forwards;
+    }
+    @keyframes rippleRun { to { transform: scale(1); opacity: 0; } }
+
+    .btn-primary, .btn-outline, .chip, .dish-card, .fav-card, .pay-method, .carousel-container {
+      transition: transform 0.12s ease, color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+    .btn-primary:active, .btn-outline:active, .chip:active, .dish-card:active, .fav-card:active, .pay-method:active, .carousel-container:active { transform: scale(0.97); }
+
+    @media (hover: hover) {
+      .btn-primary:hover { filter: brightness(1.08); box-shadow: 0 6px 18px rgba(201, 168, 76, 0.35); }
+      .btn-outline:hover { border-color: var(--c-gold); color: var(--c-gold); background: var(--c-gold-dim); }
+      .chip:hover { border-color: var(--c-border-h); color: var(--c-text); }
+      .dish-card:hover, .fav-card:hover { border-color: var(--c-border-h); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+      .pay-method:hover { border-color: var(--c-border-h); }
+      .nav-item:hover { color: var(--c-text); }
+      .carousel-container:hover { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      .view, .carousel-track, .dot, .bottom-sheet, .sheet-overlay, .step-icon, .step-line-progress, .fab-cart { animation: none !important; transition: none !important; }
+      .view, .carousel-track, .dot, .bottom-sheet, .sheet-overlay, .step-icon, .step-line-progress, .fab-cart, .toast, .ripple { animation: none !important; transition: none !important; }
     }
 
   </style>
@@ -608,6 +830,14 @@
     
     <div id="tracking-content">
       <div class="subtitle">Pedido <span id="track-id" style="font-family:monospace;color:var(--c-gold)"></span></div>
+
+      <div class="push-hint" id="push-hint" style="display:none">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">Activa las notificaciones</div>
+          <div style="font-size:12px;color:var(--c-text-2)">Te avisamos cuando tu pedido avance, sin tener que mirar la pantalla.</div>
+        </div>
+        <button class="btn-outline" style="width:auto;padding:8px 14px" onclick="requestPushPermission()">Activar</button>
+      </div>
       
       <div class="stepper">
         <div class="step-line"></div>
@@ -701,6 +931,39 @@
     </div>
   </div>
 
+  <!-- VIEW 6: ADMIN -->
+  <div id="view-admin" class="view">
+    <h1 class="title">Administración</h1>
+    
+    <div id="admin-auth" class="pin-screen">
+      <div class="subtitle">Ingrese PIN de acceso</div>
+      <input type="password" class="pin-input" id="admin-pin" maxlength="4" oninput="checkPin('admin')">
+    </div>
+    
+    <div id="admin-content" style="display:none">
+      <div class="settings-group">
+        <div class="section-title">Mi Restaurante</div>
+        <div class="subtitle" style="margin-bottom:12px">Datos que aparecen en WhatsApp y el seguimiento</div>
+        <input type="text" id="ad-cfg-name" placeholder="Nombre del restaurante">
+        <input type="tel" id="ad-cfg-wa" placeholder="WhatsApp (con código de país, ej: 584225604660)">
+        <input type="number" id="ad-cfg-delivery" step="0.50" min="0" placeholder="Costo de delivery (USD)">
+        <input type="text" id="ad-cfg-dir" placeholder="Dirección (opcional)">
+        <input type="text" id="ad-cfg-horario" placeholder="Horario (opcional)">
+        <button class="btn-primary" onclick="saveConfig()">Guardar Configuración</button>
+      </div>
+      
+      <div class="settings-group">
+        <div class="section-title">Menú</div>
+        <div class="subtitle" style="margin-bottom:12px">Agrega, edita o elimina platos. Los cambios se publican al instante.</div>
+        <button class="admin-add-btn" onclick="openDishEditor(null)">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar Plato
+        </button>
+        <div id="admin-menu-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- FLOATING CART BUTTON -->
   <button class="fab-cart" id="fab-cart" onclick="switchTab('carrito')" aria-label="Ver carrito">
     <div class="badge" id="cart-badge">0</div>
@@ -725,6 +988,10 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       <span>Ajustes</span>
     </div>
+    <div class="nav-item" onclick="switchTab('admin')" data-tab="admin">
+      <svg viewBox="0 0 24 24"><path d="M3 9l1-5h16l1 5"></path><path d="M3 9v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Admin</span>
+    </div>
   </div>
 
   <!-- BOTTOM SHEETS -->
@@ -733,6 +1000,9 @@
   <!-- Dish Detail Sheet -->
   <div class="bottom-sheet" id="sheet-dish">
     <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeSheets()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
     <div class="sheet-content">
       <img src="" class="sheet-img" id="sd-img" alt="" loading="lazy" decoding="async" width="480" height="200">
       <div class="sheet-title" id="sd-name"></div>
@@ -751,6 +1021,9 @@
   <!-- Reservation Form Sheet -->
   <div class="bottom-sheet" id="sheet-reserva">
     <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeSheets()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
     <div class="sheet-content">
       <div class="sheet-title" id="rv-title" style="margin-bottom:8px"></div>
       <div class="subtitle" style="margin-bottom:20px">Completa tus datos y confirma tu reserva por WhatsApp</div>
@@ -769,8 +1042,11 @@
   <!-- Services Sheet -->
   <div class="bottom-sheet" id="sheet-services">
     <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeSheets()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
     <div class="sheet-content">
-      <div class="sheet-title" style="margin-bottom:24px">Servicios Rogasa</div>
+      <div class="sheet-title" id="services-sheet-title" style="margin-bottom:24px">Servicios Rogasa</div>
       
       <div class="settings-item">
         <div class="settings-item-info">
@@ -798,6 +1074,43 @@
     </div>
   </div>
 
+  <!-- Admin Dish Editor Sheet -->
+  <div class="bottom-sheet" id="sheet-admin-dish">
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeAdminEditor()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="sheet-content">
+      <div class="sheet-title" id="ad-title" style="margin-bottom:8px"></div>
+      <div class="subtitle" style="margin-bottom:20px">Los cambios se publican al instante en el menú.</div>
+      <input type="text" id="ad-name" placeholder="Nombre del plato">
+      <div style="display:flex;gap:12px">
+        <input type="number" id="ad-price" step="0.50" min="0" placeholder="Precio (USD)" style="flex:1">
+        <select id="ad-cat" style="flex:1"></select>
+      </div>
+      <textarea id="ad-desc" rows="2" placeholder="Descripción corta y apetitosa"></textarea>
+      <input type="text" id="ad-ingred" placeholder="Ingredientes separados por coma (ej: Queso, Tomate, Albahaca)">
+      <input type="text" id="ad-img" placeholder="URL de la imagen (opcional)">
+      <div class="admin-hint">Si no pones imagen, se genera una automática con la inicial del plato.</div>
+      <select id="ad-acomp"></select>
+      <input type="text" id="ad-acomp-text" placeholder="Texto de acompañamiento recomendado (opcional)">
+      <div class="settings-item" style="padding:6px 0">
+        <div class="settings-item-info">
+          <div class="settings-item-name">Disponible</div>
+          <div class="settings-item-cat">Apaga para marcar como agotado</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="ad-avail" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="admin-save-row">
+        <button class="btn-outline" onclick="closeAdminEditor()">Cancelar</button>
+        <button class="btn-primary" onclick="saveDish()">Guardar Plato</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script type="module">
@@ -806,77 +1119,107 @@
   // Shortcut para getElementById — definido al inicio porque se usa en renders tempranos
   const $ = (id) => document.getElementById(id);
 
-  const WHATSAPP_NUM = '584225604660';
+  // === MULTI-TENANT ===
+  // El tenant se lee de la URL: /delivery/?t=rogasa (por defecto 'rogasa').
+  // Cada restaurante tiene su menú y configuración en /restaurantes/{t}/ de Firebase.
+  const TENANT = (() => {
+    const p = new URLSearchParams(window.location.search);
+    const t = (p.get('t') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    return t || 'rogasa';
+  })();
 
-  const MENU = [
+  let CONFIG = {
+    nombre: 'Rogasa Café',
+    whatsapp: '584225604660',
+    delivery: 2,
+    direccion: '',
+    horario: ''
+  };
+
+  function trackUrlFor(id) {
+    return `https://menu.traccionweb.com/delivery/?id=${id}${TENANT !== 'rogasa' ? '&t=' + TENANT : ''}`;
+  }
+
+  // Imagen de respaldo: si un plato no tiene foto o la URL falla, se genera
+  // una inicial elegante con el estilo de la página.
+  function dishImgFallback(name) {
+    const letter = (name || '?').trim().charAt(0).toUpperCase() || '?';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" rx="14" fill="#1d1d22"/><text x="120" y="152" font-size="96" font-family="Georgia, serif" fill="#d9a441" text-anchor="middle">${letter}</text></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg).replace(/'/g, '%27');
+  }
+  function dishImgSrc(d) { return (d.img && d.img.trim()) ? d.img.trim() : dishImgFallback(d.name); }
+
+  // MENU se carga desde Firebase por tenant; el menú de abajo es la plantilla
+  // por defecto (y el de Rogasa hasta que se edite desde Admin).
+  let MENU = [
     {id:1, name:'Carpaccio De Lomito', price:18, cat:'entradas', img:'./img/carpaccio_lomito.webp',
      desc:'Finas láminas de lomito marinadas con limón, aceite de oliva extra virgen y parmesano.',
      ingred:['Lomito', 'Parmesano', 'Rúcula', 'Alcaparras', 'Limón'],
-     acomp:'Ligero y fresco: combínalo con la Fosforera Rogasa para abrir con sabor a mar.'},
+     acomp:'Ligero y fresco: combínalo con la Fosforera Rogasa para abrir con sabor a mar.', acompId:5},
     {id:2, name:'Carpaccio De Pulpo', price:22, cat:'entradas', img:'./img/carpaccio_pulpo.webp',
      desc:'Pulpo tierno en láminas con aceite de oliva, paprika ahumada y toques cítricos.',
      ingred:['Pulpo', 'Aceite de Oliva', 'Paprika', 'Limón', 'Perejil'],
-     acomp:'Un blanco seco o el Jugo de Fresa Natural equilibran su sabor intenso.'},
+     acomp:'Un blanco seco o el Jugo de Fresa Natural equilibran su sabor intenso.', acompId:19},
     {id:3, name:'Tequeños Hechos En Casa', price:10, cat:'entradas', img:'./img/tequenos_caseros.webp',
      desc:'Masa casera rellena de queso semi-curado, fritos al momento.',
      ingred:['Queso semi-curado', 'Masa casera', 'Guasacaca'],
-     acomp:'Ideales para compartir con la Ensalada Capresa Rogasa como entrada completa.'},
+     acomp:'Ideales para compartir con la Ensalada Capresa Rogasa como entrada completa.', acompId:4},
     {id:4, name:'Ensalada Capresa Rogasa', price:14, cat:'entradas', img:'./img/ensalada_capresa.webp',
      desc:'Tomate, mozzarella fresca y albahaca con reducción balsámica.',
      ingred:['Tomate', 'Mozzarella fresca', 'Albahaca', 'Balsámico'],
-     acomp:'Refrescante: acompáñala con el Panuzzo Pollo Crispy para una cena ligera.'},
+     acomp:'Refrescante: acompáñala con el Panuzzo Pollo Crispy para una cena ligera.', acompId:16},
     {id:5, name:'Fosforera Rogasa', price:16, cat:'entradas', img:'./img/fosforera_rogasa.webp',
      desc:'Crema de mariscos con toques de ajo, perejil y mariscos frescos.',
      ingred:['Mariscos', 'Crema', 'Ajo', 'Perejil', 'Cebollín'],
-     acomp:'Sigue con el Risotto Negro para una experiencia de mar completa.'},
+     acomp:'Sigue con el Risotto Negro para una experiencia de mar completa.', acompId:9},
     {id:6, name:'Spaghetti Carbonara', price:24, cat:'pastas', img:'./img/carbonara.webp',
      desc:'Pasta al dente con salsa de yema, panceta crujiente y parmesano.',
      ingred:['Panceta', 'Yema de huevo', 'Parmesano', 'Pimienta negra'],
-     acomp:'La Torta Rústica de Chocolate es el cierre dulce perfecto.'},
+     acomp:'La Torta Rústica de Chocolate es el cierre dulce perfecto.', acompId:18},
     {id:7, name:'Lasaña De La Abuela', price:22, cat:'pastas', img:'./img/lasana.webp',
      desc:'Capas de pasta con ragú de carne, bechamel y gratinado de queso.',
      ingred:['Ragú de carne', 'Bechamel', 'Parmesano', 'Albahaca'],
-     acomp:'Acompáñala con una Ensalada Capresa Rogasa para balancear.'},
+     acomp:'Acompáñala con una Ensalada Capresa Rogasa para balancear.', acompId:4},
     {id:8, name:'Cartoccio De Lomito', price:26, cat:'pastas', img:'./img/lomito_florencia.webp',
      desc:'Pasta envuelta en papel de horno con lomito, tomate y hierbas aromáticas.',
      ingred:['Lomito', 'Tomate', 'Hierbas aromáticas', 'Parmesano'],
-     acomp:'Si vienes con antojo de pasta, el Spaghetti Carbonara es la pareja ideal.'},
+     acomp:'Si vienes con antojo de pasta, el Spaghetti Carbonara es la pareja ideal.', acompId:6},
     {id:9, name:'Risotto Negro', price:28, cat:'pastas', img:'./img/risotto_negro.webp',
      desc:'Arroz cremoso con tinta de calamar, mariscos y un toque de limón.',
      ingred:['Tinta de calamar', 'Mariscos', 'Arroz', 'Limón'],
-     acomp:'La Fosforera Rogasa abre el apetito perfecto para este plato.'},
+     acomp:'La Fosforera Rogasa abre el apetito perfecto para este plato.', acompId:5},
     {id:10, name:'Lomito Florencia', price:36, cat:'carnes', img:'./img/lomito_florencia.webp',
      desc:'Corte de lomito a la parrilla con salsa de champiñones y gratinado de queso.',
      ingred:['Lomito', 'Champiñones', 'Queso gratinado', 'Papas'],
-     acomp:'Un vino tinto o el Risotto Negro lo convierten en una velada completa.'},
+     acomp:'Un vino tinto o el Risotto Negro lo convierten en una velada completa.', acompId:9},
     {id:11, name:'Hamburguesa Angus', price:20, cat:'carnes', img:'./img/hamburguesa.webp',
      desc:'Carne angus jugosa con queso cheddar, tocineta y papas fritas.',
      ingred:['Angus', 'Cheddar', 'Tocineta', 'Papas fritas'],
-     acomp:'Acompáñala con Tequeños Hechos En Casa para compartir.'},
+     acomp:'Acompáñala con Tequeños Hechos En Casa para compartir.', acompId:3},
     {id:12, name:'Langostinos Tempura', price:28, cat:'carnes', img:'./img/langostinos_tempura.webp',
      desc:'Langostinos crujientes en tempura con salsa agridulce.',
      ingred:['Langostinos', 'Tempura', 'Salsa agridulce', 'Sésamo'],
-     acomp:'El Jugo de Fresa Natural refresca perfectamente este plato.'},
+     acomp:'El Jugo de Fresa Natural refresca perfectamente este plato.', acompId:19},
     {id:13, name:'Pulpo Al Grill', price:30, cat:'carnes', img:'./img/pulpo_grill.webp',
      desc:'Pulpo a la parrilla con papas, pimentón y alioli ahumado.',
      ingred:['Pulpo', 'Papas', 'Pimentón', 'Alioli ahumado'],
-     acomp:'Combínalo con la Ensalada Capresa para una cena mediterránea.'},
+     acomp:'Combínalo con la Ensalada Capresa para una cena mediterránea.', acompId:4},
     {id:14, name:'Tartufo De Mortadela (Pizza)', price:22, cat:'pizzas', img:'./img/pizzas_tartufo.webp',
      desc:'Pizza con crema de trufa, mortadela y mozzarella fundida.',
      ingred:['Trufa', 'Mortadela', 'Mozzarella', 'Masa artesanal'],
-     acomp:'Una Focaccia Rústica Martina con aceite de oliva la hace aún mejor.'},
+     acomp:'Una Focaccia Rústica Martina con aceite de oliva la hace aún mejor.', acompId:15},
     {id:15, name:'Focaccia Rústica Martina', price:16, cat:'pizzas', img:'./img/pizzas_tartufo.webp',
      desc:'Focaccia artesanal con romero, sal marina y aceite de oliva.',
      ingred:['Romero', 'Aceite de oliva', 'Sal marina', 'Masa madre'],
-     acomp:'Perfecta con la Pizza Tartufo de Mortadela para compartir.'},
+     acomp:'Perfecta con la Pizza Tartufo de Mortadela para compartir.', acompId:14},
     {id:16, name:'Panuzzo Pollo Crispy', price:18, cat:'pizzas', img:'./img/hamburguesa.webp',
      desc:'Pan crujiente relleno de pollo empanizado, lechuga y aderezo cremoso.',
      ingred:['Pollo crispy', 'Lechuga', 'Aderezo cremoso', 'Pan artesanal'],
-     acomp:'Con unos Tequeños Hechos En Casa es la combinación ganadora.'},
+     acomp:'Con unos Tequeños Hechos En Casa es la combinación ganadora.', acompId:3},
     {id:17, name:'Macarrón Con Queso', price:12, cat:'infantil', img:'./img/carbonara.webp',
      desc:'Macarrones cremosos con mezcla de quesos gratinados. El favorito de los pequeños.',
      ingred:['Queso cheddar', 'Queso crema', 'Macarrones'],
-     acomp:'La Torta Rústica de Chocolate hará felices a los niños.'},
+     acomp:'La Torta Rústica de Chocolate hará felices a los niños.', acompId:18},
     {id:18, name:'Torta Rústica de Chocolate', price:10, cat:'postres', img:'./img/torta_chocolate.webp',
      desc:'Torta húmeda de chocolate con corazón fundido y un toque de sal marina.',
      ingred:['Chocolate 70%', 'Sal marina', 'Mantequilla', 'Huevo'],
@@ -888,6 +1231,17 @@
   ];
 
   const CATEGORIES = ['Todo', 'Entradas', 'Pastas', 'Carnes', 'Pizzas', 'Postres', 'Bebidas', 'Infantil'];
+
+  const CATEGORY_ICONS = {
+    'Todo':      '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    'Entradas':  '<path d="M4 11h16a8 8 0 0 1-16 0z"/><line x1="12" y1="3" x2="12" y2="7"/>',
+    'Pastas':    '<path d="M5 3v6M9 3v6M13 3v6"/><path d="M7 9v9a2 2 0 0 0 4 0V9"/>',
+    'Carnes':    '<path d="M17 4c-3.5 0-6 2.5-6 5.5 0 1.7.9 3 2.5 4.2 2 1.5 4.5 1.8 6 .6 2-1.6 1.6-10.3-2.5-10.3z"/><line x1="9" y1="11" x2="6" y2="14"/>',
+    'Pizzas':    '<path d="M12 4l8 16-8-2-8 2z"/><line x1="12" y1="18" x2="12" y2="4"/>',
+    'Postres':   '<path d="M6 14h12v6H6z"/><path d="M6 14c0-3 1.2-5.2 3-6.2 1 1 2 1 3 0 1 1 2 1 3 0 1.8 1 3 3.2 3 6.2"/><circle cx="12" cy="5" r="2"/>',
+    'Bebidas':   '<path d="M7 3h10l-.7 12.2a2 2 0 0 1-2 1.8h-4.6a2 2 0 0 1-2-1.8z"/><line x1="7" y1="9" x2="17" y2="9"/><path d="M14 3l.8 4"/>',
+    'Infantil':  '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.3 2 3.5 2 3.5-2 3.5-2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>'
+  };
 
   let state = {
     cart: [],
@@ -904,8 +1258,87 @@
     adminSubscribed: false,
     reservaType: null,
     unsubscribeTracking: null,
-    unsubscribeAdmin: null
+    unsubscribeAdmin: null,
+    fcmToken: null,
+    fcmEnabled: false,
+    pendingOrderId: null
   };
+
+  // === NOTIFICACIONES PUSH ===
+  const STATUS_LABELS = {
+    recibido: 'Tu pedido ha sido recibido.',
+    cocina: 'Estamos preparando tu pedido.',
+    reparto: 'Tu pedido está en camino.',
+    entregado: 'Tu pedido ha sido entregado. ¡Buen provecho!'
+  };
+  let fcmRequested = false;
+  let lastNotified = '';
+
+  // Pide permiso y registra el token FCM del dispositivo en el pedido (no bloquea el flujo)
+  function ensureFCM(orderId) {
+    state.pendingOrderId = orderId || state.pendingOrderId;
+    if (fcmRequested) return;
+    fcmRequested = true;
+    db.initFCM(handleForegroundPush).then((token) => {
+      state.fcmToken = token || null;
+      state.fcmEnabled = !!token;
+      if (token && state.pendingOrderId) {
+        db.actualizarToken(state.pendingOrderId, token);
+      }
+    });
+  }
+
+  // Push recibido con la app abierta (FCM entrega en primer plano vía onMessage)
+  function handleForegroundPush(payload) {
+    const data = payload.data || {};
+    const estado = data.estado;
+    const body = (payload.notification && payload.notification.body) || STATUS_LABELS[estado] || 'Tu pedido ha cambiado de estado.';
+    showOrderNotification(data.orderId || state.pendingOrderId, estado, body);
+  }
+
+  // Notifica el cambio de estado sin duplicados:
+  // - app visible → toast elegante
+  // - pestaña en segundo plano y FCM no disponible → notificación del sistema
+  // - FCM disponible → el service worker ya muestra la notificación del sistema
+  function showOrderNotification(orderId, estado, body) {
+    const key = (orderId || '') + ':' + (estado || '');
+    if (!estado || key === lastNotified) return;
+    lastNotified = key;
+    if (!document.hidden) {
+      showToast(body, 'success');
+      return;
+    }
+    if (state.fcmEnabled) return;
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        const n = new Notification(CONFIG.nombre, {
+          body,
+          icon: './img/logo.webp',
+          badge: './img/logo.webp',
+          tag: orderId,
+          data: { url: trackUrlFor(orderId) }
+        });
+        n.onclick = () => { window.focus(); window.location.href = trackUrlFor(orderId); };
+      } catch (e) { /* el navegador puede bloquear notificaciones en algunos contextos */ }
+    }
+  }
+
+  function updatePushHint() {
+    const hint = document.getElementById('push-hint');
+    if (!hint) return;
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'default') {
+      hint.style.display = 'none';
+      return;
+    }
+    hint.style.display = 'block';
+  }
+
+  function requestPushPermission() {
+    ensureFCM(state.trackingId);
+    updatePushHint();
+  }
+
+  window.db = db; // expuesto para el panel admin y soporte
 
   // Set up global functions immediately
   window.switchTab = switchTab;
@@ -916,6 +1349,7 @@
   window.openWhatsAppReserva = openWhatsAppReserva;
   window.sendReservaWhatsApp = sendReservaWhatsApp;
   window.toggleRecomendacion = toggleRecomendacion;
+  window.addRecommendedToCart = addRecommendedToCart;
   window.setCategory = setCategory;
   window.renderMenu = renderMenu;
   window.onSearchInput = onSearchInput;
@@ -930,6 +1364,13 @@
   window.dismissOrder = dismissOrder;
   window.sendWhatsAppUpdate = sendWhatsAppUpdate;
   window.checkout = checkout;
+  window.openDishEditor = openDishEditor;
+  window.closeAdminEditor = closeAdminEditor;
+  window.saveDish = saveDish;
+  window.deleteDish = deleteDish;
+  window.saveConfig = saveConfig;
+  window.renderAdminMenu = renderAdminMenu;
+  window.requestPushPermission = requestPushPermission;
 
   // Check URL for tracking
   const urlParams = new URLSearchParams(window.location.search);
@@ -949,6 +1390,39 @@
     tasaInput.value = state.tasa.toFixed(2);
   }
 
+  // Carga el menú y la configuración del tenant desde Firebase (si existen).
+  // Mientras llega, la app ya muestra la plantilla por defecto (carga instantánea).
+  async function loadTenantData() {
+    try {
+      const data = await db.obtenerRestaurante(TENANT);
+      if (data && Array.isArray(data.menu) && data.menu.length) {
+        MENU = data.menu;
+      }
+      if (data && data.config) {
+        CONFIG = { ...CONFIG, ...data.config };
+        if (Array.isArray(data.config.soldOut)) {
+          state.soldOut = data.config.soldOut;
+        }
+      }
+      // Si el menú del tenant no comparte los favoritos por defecto,
+      // destacar los primeros platos disponibles.
+      const matched = state.favorites.filter(id => getDish(id));
+      if (matched.length < 3 && MENU.length) {
+        state.favorites = MENU.slice(0, 5).map(d => d.id);
+      }
+      document.title = `${CONFIG.nombre} — Delivery`;
+      const sst = document.getElementById('services-sheet-title');
+      if(sst) sst.textContent = `Servicios ${CONFIG.nombre}`;
+      renderMenu();
+      renderFavorites();
+      renderCategories();
+      updateCartBadge();
+    } catch (e) {
+      console.warn('No se pudo cargar el tenant:', e);
+    }
+  }
+  loadTenantData();
+
   // NAVIGATION
   function switchTab(tabId) {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -962,6 +1436,7 @@
     if(tabId === 'seguimiento') initTracking();
     if(tabId === 'cocina' && document.getElementById('cocina-content').style.display !== 'none') initCocina();
     if(tabId === 'ajustes' && document.getElementById('ajustes-content').style.display !== 'none') initAjustes();
+    if(tabId === 'admin' && document.getElementById('admin-content').style.display !== 'none') initAdmin();
 
     // Ocultar el botón flotante dentro de la vista del carrito
     const fab = document.getElementById('fab-cart');
@@ -982,7 +1457,72 @@
       const pin = document.getElementById('ajustes-pin');
       if(pin) pin.value = '';
     }
+    if(tabId !== 'admin') {
+      const auth = document.getElementById('admin-auth');
+      const content = document.getElementById('admin-content');
+      if(auth) { auth.style.display = ''; content.style.display = 'none'; }
+      const pin = document.getElementById('admin-pin');
+      if(pin) pin.value = '';
+    }
   }
+
+  // TOASTS (notificaciones con el estilo de la página)
+  function showToast(msg, type) {
+    type = type || 'error';
+    let wrap = document.querySelector('.toast-wrap');
+    if(!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'toast-wrap';
+      document.body.appendChild(wrap);
+    }
+    const icons = {
+      error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="13"></line><line x1="12" y1="16.5" x2="12.01" y2="16.5"></line></svg>',
+      success: '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>'
+    };
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.innerHTML = `<div class="toast-ic">${icons[type] || icons.error}</div><div class="toast-msg">${msg}</div>`;
+    wrap.appendChild(t);
+    while(wrap.children.length > 3) wrap.firstChild.remove();
+    setTimeout(() => {
+      t.classList.add('leaving');
+      t.addEventListener('animationend', () => t.remove(), { once: true });
+    }, 3200);
+  }
+
+  // Resalta los campos vacíos y enfoca el primero
+  function markInvalidFields(ids) {
+    const empty = ids.filter(id => {
+      const el = document.getElementById(id);
+      return el && !el.value.trim();
+    });
+    empty.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.add('field-error');
+      el.addEventListener('input', () => el.classList.remove('field-error'), { once: true });
+    });
+    if(empty.length) document.getElementById(empty[0]).focus();
+  }
+
+  // RIPPLE: onda táctil en cada pulsación (feedback profesional)
+  const RIPPLE_TARGETS = 'button, .nav-item, .chip, .dish-card, .fav-card, .pay-method, .carousel-container';
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const host = e.target.closest(RIPPLE_TARGETS);
+    if (!host || host.disabled) return;
+    if (host.id === 'fab-cart') return; // el FAB ya tiene escala + bump propios
+    if (host.querySelector('.agotado-overlay')) return; // platos agotados: sin acción, sin onda
+    const rect = host.getBoundingClientRect();
+    const d = Math.max(rect.width, rect.height) * 1.2;
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.width = r.style.height = d + 'px';
+    r.style.left = (e.clientX - rect.left - d / 2) + 'px';
+    r.style.top = (e.clientY - rect.top - d / 2) + 'px';
+    host.appendChild(r);
+    r.addEventListener('animationend', () => r.remove(), { once: true });
+  });
 
   // UTILS
   let searchTimer = null;
@@ -999,7 +1539,10 @@
   function renderCategories() {
     const cont = $('category-chips');
     cont.innerHTML = CATEGORIES.map(cat => 
-      `<div class="chip ${state.activeCategory === cat ? 'active' : ''}" onclick="setCategory('${cat}')">${cat}</div>`
+      `<div class="chip ${state.activeCategory === cat ? 'active' : ''}" onclick="setCategory('${cat}')">
+        <svg viewBox="0 0 24 24">${CATEGORY_ICONS[cat]}</svg>
+        <span>${cat}</span>
+      </div>`
     ).join('');
   }
 
@@ -1014,7 +1557,7 @@
     const favs = MENU.filter(d => state.favorites.includes(d.id));
     cont.innerHTML = favs.map(d => `
       <div class="fav-card" ${isSoldOut(d.id) ? '' : `onclick="openDishSheet(${d.id})"`}>
-        <img src="${d.img}" class="fav-img" alt="${d.name}" loading="lazy" decoding="async" width="140" height="100">
+        <img src="${dishImgSrc(d)}" class="fav-img" alt="${d.name}" loading="lazy" decoding="async" width="140" height="100" onerror="this.onerror=null;this.src='${dishImgFallback(d.name)}'">
         <div class="fav-info">
           <div class="fav-name">${d.name}</div>
           <div class="fav-price">$${d.price}</div>
@@ -1041,7 +1584,7 @@
 
     cont.innerHTML = filtered.map(d => `
       <div class="dish-card" ${isSoldOut(d.id) ? '' : `onclick="openDishSheet(${d.id})"`}>
-        <img src="${d.img}" class="dish-img" alt="${d.name}" loading="lazy" decoding="async" width="80" height="80">
+        <img src="${dishImgSrc(d)}" class="dish-img" alt="${d.name}" loading="lazy" decoding="async" width="80" height="80" onerror="this.onerror=null;this.src='${dishImgFallback(d.name)}'">
         <div class="dish-info">
           <div class="dish-name">${d.name}</div>
           <div class="dish-cat">${d.cat}</div>
@@ -1074,15 +1617,27 @@
     if(!d) return;
     state.selectedDishId = id;
     
-    document.getElementById('sd-img').src = d.img;
+    const sdImg = document.getElementById('sd-img');
+    sdImg.src = dishImgSrc(d);
+    sdImg.onerror = () => { sdImg.onerror = null; sdImg.src = dishImgFallback(d.name); };
     document.getElementById('sd-name').textContent = d.name;
     document.getElementById('sd-price-usd').textContent = `$${d.price}`;
     document.getElementById('sd-price-bs').textContent = formatBs(d.price);
-    document.getElementById('sd-desc').textContent = d.desc || 'Preparado con ingredientes frescos y la receta original de Rogasa Café.';
+    document.getElementById('sd-desc').textContent = d.desc || 'Preparado con ingredientes frescos y la receta original de la casa.';
     document.getElementById('sd-ingred').innerHTML = (d.ingred || []).map(i => `<span class="ingred-chip">${i}</span>`).join('');
 
     const pairBox = document.getElementById('sd-pair');
-    pairBox.textContent = d.acomp || '';
+    state.selectedRecomId = d.acompId || null;
+    const rec = d.acompId ? getDish(d.acompId) : null;
+    const recSold = rec ? isSoldOut(d.acompId) : false;
+    pairBox.innerHTML = d.acomp
+      ? `<div class="pair-text">${d.acomp}</div>` + (rec && !recSold
+          ? `<button class="pair-add-btn" id="sd-pair-add" onclick="addRecommendedToCart()">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar ${rec.name} al Carrito · +$${rec.price}
+            </button>`
+          : '')
+      : '';
     pairBox.style.display = 'none';
     document.getElementById('sd-pair-btn').textContent = 'Recomendar acompañamiento';
     document.getElementById('sd-pair-btn').style.display = d.acomp ? '' : 'none';
@@ -1109,8 +1664,48 @@
 
   function closeSheets() {
     document.getElementById('sheet-overlay').classList.remove('active');
-    document.querySelectorAll('.bottom-sheet').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.bottom-sheet').forEach(el => {
+      el.classList.remove('active');
+      el.style.transform = '';
+      el.style.transition = '';
+    });
   }
+
+  // SWIPE PARA CERRAR: deslizar la hoja hacia abajo (estilo app nativa)
+  document.querySelectorAll('.bottom-sheet').forEach(sheet => {
+    const content = sheet.querySelector('.sheet-content');
+    let startY = 0, dragging = false, suppress = false;
+
+    sheet.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+      dragging = true;
+      suppress = false;
+      sheet.style.transition = 'none';
+    }, { passive: true });
+
+    sheet.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      const dy = e.touches[0].clientY - startY;
+      // No arrastrar hacia arriba ni interferir con el scroll del contenido
+      if (dy <= 0 || (content && content.scrollTop > 0)) { suppress = true; return; }
+      suppress = false;
+      e.preventDefault();
+      sheet.style.transform = `translateX(-50%) translateY(${(dy * 0.6).toFixed(1)}px)`;
+    }, { passive: false });
+
+    sheet.addEventListener('touchend', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (!suppress && dy > 90) {
+        closeSheets();
+      } else {
+        sheet.style.transition = 'transform 0.25s ease';
+        sheet.style.transform = '';
+        setTimeout(() => { sheet.style.transition = ''; }, 260);
+      }
+    }, { passive: true });
+  });
 
   const RESERVA_SERVICIOS = {
     evento:      { title: 'Eventos y Reservaciones',   nombre: 'Evento Especial' },
@@ -1143,14 +1738,15 @@
     const extra = $('rv-msg').value.trim();
 
     if(!name || !phone || !date) {
-      alert('Completa al menos nombre, teléfono y fecha.');
+      showToast('Completa al menos nombre, teléfono y fecha.');
+      markInvalidFields(['rv-name','rv-phone','rv-date']);
       return;
     }
 
     const fecha = new Date(date + 'T00:00:00').toLocaleDateString('es-VE', {day:'2-digit', month:'2-digit', year:'numeric'});
     const s = RESERVA_SERVICIOS[state.reservaType] || { nombre: state.reservaType };
 
-    let msg = `*ROGASA CAFE — Reserva*`;
+    let msg = `*${CONFIG.nombre.toUpperCase()} — Reserva*`;
     msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━`;
     msg += `\n*Servicio:* ${s.nombre}`;
     msg += `\n*Nombre:* ${name}`;
@@ -1160,9 +1756,9 @@
     if(pax) msg += `\n*Personas:* ${pax}`;
     if(extra) msg += `\n*Comentarios:* ${extra}`;
     msg += `\n━━━━━━━━━━━━━━━━━━━━━━━━`;
-    msg += `\nRogasa Cafe — Gracias por tu preferencia.`;
+    msg += `\n${CONFIG.nombre} — Gracias por tu preferencia.`;
 
-    window.open(`https://wa.me/${WHATSAPP_NUM}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
     closeSheets();
   }
 
@@ -1181,6 +1777,27 @@
   function addToCartFromSheet() {
     addToCart(state.selectedDishId);
     closeSheets();
+  }
+
+  // Agregar el acompañamiento recomendado directamente al carrito
+  function addRecommendedToCart() {
+    const recId = state.selectedRecomId;
+    if(!recId || isSoldOut(recId)) return;
+    const rec = getDish(recId);
+    addToCart(recId);
+    showToast(`${rec.name} agregada al carrito`, 'success');
+    const btn = document.getElementById('sd-pair-add');
+    if(btn) {
+      const label = btn.innerHTML;
+      btn.classList.add('added');
+      btn.disabled = true;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M20 6L9 17l-5-5"/></svg> Agregada al carrito';
+      setTimeout(() => {
+        btn.classList.remove('added');
+        btn.disabled = false;
+        btn.innerHTML = label;
+      }, 1800);
+    }
   }
 
   function updateCartBadge() {
@@ -1242,7 +1859,7 @@
       totalUsd += i.price * i.q;
       html += `
         <div class="cart-item">
-          <img src="${i.img}" class="cart-item-img" alt="${i.name}" loading="lazy" decoding="async" width="60" height="60">
+          <img src="${dishImgSrc(i)}" class="cart-item-img" alt="${i.name}" loading="lazy" decoding="async" width="60" height="60" onerror="this.onerror=null;this.src='${dishImgFallback(i.name)}'">
           <div class="cart-item-info">
             <div class="cart-item-name">${i.name}</div>
             <div class="cart-item-price">$${i.price}</div>
@@ -1286,12 +1903,12 @@
 
       <div class="summary-box">
         <div class="summary-row"><span>Subtotal</span><span>$${totalUsd.toFixed(2)}</span></div>
-        <div class="summary-row"><span>Delivery</span><span>$2.00</span></div>
+        <div class="summary-row"><span>Delivery</span><span>$${CONFIG.delivery.toFixed(2)}</span></div>
         <div class="summary-total">
           <span>Total</span>
           <div>
-            <div>$${(totalUsd + 2).toFixed(2)}</div>
-            <div class="summary-total-bs">${formatBs(totalUsd + 2)}</div>
+            <div>$${(totalUsd + CONFIG.delivery).toFixed(2)}</div>
+            <div class="summary-total-bs">${formatBs(totalUsd + CONFIG.delivery)}</div>
           </div>
         </div>
       </div>
@@ -1311,23 +1928,25 @@
     }
   }
 
-  async function checkout() {
+  function checkout() {
     const name = document.getElementById('c-name')?.value;
     const phone = document.getElementById('c-phone')?.value;
     const sector = document.getElementById('c-sector')?.value;
     const ref = document.getElementById('c-ref')?.value;
     
     if(!name || !phone || !sector) {
-      alert("Por favor completa nombre, teléfono y sector.");
+      showToast('Por favor completa nombre, teléfono y barrio.');
+      markInvalidFields(['c-name','c-phone','c-sector']);
       return;
     }
 
     const cartItems = state.cart.map(i => ({ ...i }));
-    const totalUsd = cartItems.reduce((s,i) => s + (i.price * i.q), 0) + 2;
+    const totalUsd = cartItems.reduce((s,i) => s + (i.price * i.q), 0) + CONFIG.delivery;
     const items = cartItems.map(i => ({id: i.id, nombre: i.name, cantidad: i.q, precio: i.price}));
     
     const pedido = {
       id: db.generarIdUnico(),
+      restaurante: TENANT,
       cliente_nombre: name,
       telefono: phone,
       ubicacion: `${sector} - ${ref}`,
@@ -1337,16 +1956,9 @@
       items: items
     };
 
-    await db.crearPedido(pedido);
-    
-    state.cart = [];
-    updateCartBadge();
-    state.trackingId = pedido.id;
-    localStorage.setItem('last_delivery_tracking_id', state.trackingId);
-    
     const payLabels = {efectivo:'Efectivo',transferencia:'Transferencia Bancaria',zelle:'Zelle'};
-    const trackUrl = `https://traccionweb.com/domicilios?id=${pedido.id}`;
-    let msg = `*ROGASA CAFE — Pedido a Domicilio*\n`;
+    const trackUrl = trackUrlFor(pedido.id);
+    let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `*Pedido:* ${pedido.id}\n`;
     msg += `*Cliente:* ${name}\n`;
@@ -1361,18 +1973,32 @@
       msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
     });
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    const subtotalUsd = totalUsd - 2;
+    const subtotalUsd = totalUsd - CONFIG.delivery;
     msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
-    msg += `*Delivery:*  $2.00 / Bs. ${(2 * state.tasa).toFixed(2)}\n`;
+    msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
     msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `*Metodo de Pago:* ${payLabels[state.payMethod] || state.payMethod}\n`;
     msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
     msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
-    msg += `Rogasa Cafe — Gracias por tu preferencia.`;
-    window.open(`https://wa.me/${WHATSAPP_NUM}?text=${encodeURIComponent(msg)}`, '_blank');
-    
+    msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
+
+    // 1) Abrir WhatsApp INMEDIATO: sin esperar Firebase, dentro del gesto del click
+    //    (un await antes de window.open ralentiza la transición y puede disparar el bloqueador de popups)
+    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    // Notificaciones push: pedir permiso y registrar el token en el pedido (en segundo plano)
+    ensureFCM(pedido.id);
+
+    // 2) Pasar al seguimiento al instante
+    state.cart = [];
+    updateCartBadge();
+    state.trackingId = pedido.id;
+    localStorage.setItem('last_delivery_tracking_id', state.trackingId);
     switchTab('seguimiento');
+
+    // 3) Guardar en Firebase en segundo plano — no bloquea la transición
+    db.crearPedido(pedido).catch(err => console.error('No se pudo guardar el pedido:', err));
   }
 
   // TRACKING
@@ -1398,7 +2024,9 @@
     state.unsubscribeTracking = db.suscribirAPedido(state.trackingId, (pedido) => {
       if(!pedido) return;
       updateStepper(pedido.estado);
+      showOrderNotification(pedido.id, pedido.estado, STATUS_LABELS[pedido.estado] || 'Tu pedido ha cambiado de estado.');
     });
+    updatePushHint();
   }
 
   function updateStepper(estado) {
@@ -1425,6 +2053,7 @@
       document.getElementById(`${view}-pin`).value = '';
       if(view === 'cocina') initCocina();
       if(view === 'ajustes') initAjustes();
+      if(view === 'admin') initAdmin();
     }
   }
 
@@ -1469,7 +2098,11 @@
 
     state.unsubscribeAdmin = db.suscribirATodosLosPedidos((pedidos) => {
       const cont = $('orders-container');
-      const filtered = pedidos.filter(p => !state.dismissedOrders.includes(p.id));
+      // Solo pedidos de este restaurante (los viejos sin campo 'restaurante' son de rogasa)
+      const filtered = pedidos.filter(p =>
+        !state.dismissedOrders.includes(p.id) &&
+        (!p.restaurante ? TENANT === 'rogasa' : p.restaurante === TENANT)
+      );
 
       if(filtered.length === 0) {
         cont.innerHTML = `<div class="empty-state"><p>No hay pedidos activos.</p></div>`;
@@ -1523,16 +2156,200 @@
       reparto: 'En Camino — El repartidor se dirige a tu ubicacion',
       entregado: 'Entregado — Tu pedido ha sido entregado'
     };
-    const trackUrl = `https://traccionweb.com/domicilios?id=${id}`;
-    let msg = `*ROGASA CAFE*\n`;
+    const trackUrl = trackUrlFor(id);
+    let msg = `*${CONFIG.nombre.toUpperCase()}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `*Actualizacion de Pedido*\n\n`;
     msg += `*Pedido:* ${id}\n`;
     msg += `*Estado:* ${statusLabels[status] || status}\n\n`;
     msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
-    msg += `Rogasa Cafe — Gracias por tu preferencia.`;
+    msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
     let cleanPhone = phone.replace(/\D/g, '');
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // ADMIN PANEL (multi-tenant)
+  let editingDishId = null;
+  const DEL_ICON = '<svg viewBox="0 0 24 24" style="width:15px;height:15px"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+
+  function initAdmin() {
+    $('ad-cfg-name').value = CONFIG.nombre || '';
+    $('ad-cfg-wa').value = CONFIG.whatsapp || '';
+    $('ad-cfg-delivery').value = CONFIG.delivery != null ? CONFIG.delivery : 2;
+    $('ad-cfg-dir').value = CONFIG.direccion || '';
+    $('ad-cfg-horario').value = CONFIG.horario || '';
+    renderAdminMenu();
+  }
+
+  function renderAdminMenu() {
+    const cont = $('admin-menu-list');
+    cont.innerHTML = MENU.map(d => {
+      const fb = dishImgFallback(d.name);
+      return `
+      <div class="admin-dish-row">
+        <img class="admin-thumb" src="${dishImgSrc(d)}" alt="${d.name}" loading="lazy" decoding="async" width="44" height="44" onerror="this.onerror=null;this.src='${fb}'">
+        <div class="admin-dish-info">
+          <div class="admin-dish-name">${d.name}${isSoldOut(d.id) ? ' <span style="color:var(--c-rose)">· Agotado</span>' : ''}</div>
+          <div class="admin-dish-cat">${d.cat} · $${d.price}</div>
+        </div>
+        <div class="admin-dish-actions">
+          <label class="toggle" title="Disponible">
+            <input type="checkbox" ${!isSoldOut(d.id) ? 'checked' : ''} onchange="toggleSoldOut(${d.id}, this.checked)">
+            <span class="slider"></span>
+          </label>
+          <button class="admin-icon-btn" onclick="openDishEditor(${d.id})" title="Editar" aria-label="Editar ${d.name}">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"></path></svg>
+          </button>
+          <button class="admin-icon-btn danger" id="adm-del-${d.id}" onclick="deleteDish(${d.id})" title="Eliminar" aria-label="Eliminar ${d.name}">${DEL_ICON}</button>
+        </div>
+      </div>`;
+    }).join('') || '<div class="empty-state" style="display:flex"><p>Sin platos todavía. Agrega el primero.</p></div>';
+  }
+
+  function fillAdminSelects() {
+    $('ad-cat').innerHTML = CATEGORIES.filter(c => c !== 'Todo')
+      .map(c => `<option value="${c}">${c}</option>`).join('');
+    $('ad-acomp').innerHTML = '<option value="">Acompañamiento recomendado: Ninguno</option>' + MENU
+      .map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  }
+
+  $('ad-acomp').addEventListener('change', () => {
+    const sel = $('ad-acomp');
+    const text = $('ad-acomp-text');
+    if(sel.value && !text.value.trim()) {
+      const d = getDish(parseInt(sel.value, 10));
+      if(d) text.value = `Acompáñalo con ${d.name} para una experiencia completa.`;
+    }
+  });
+
+  function openDishEditor(id) {
+    editingDishId = id;
+    fillAdminSelects();
+    const isNew = id === null || id === undefined;
+    $('ad-title').textContent = isNew ? 'Nuevo Plato' : 'Editar Plato';
+    const d = isNew ? null : getDish(id);
+    $('ad-name').value = d ? d.name : '';
+    $('ad-price').value = d ? d.price : '';
+    $('ad-cat').value = d ? d.cat : 'entradas';
+    $('ad-desc').value = d ? (d.desc || '') : '';
+    $('ad-ingred').value = d ? (d.ingred || []).join(', ') : '';
+    $('ad-img').value = d ? (d.img || '') : '';
+    $('ad-acomp').value = d ? (d.acompId || '') : '';
+    $('ad-acomp-text').value = d ? (d.acomp || '') : '';
+    $('ad-avail').checked = d ? !isSoldOut(d.id) : true;
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-admin-dish').classList.add('active');
+  }
+
+  function closeAdminEditor() {
+    document.getElementById('sheet-overlay').classList.remove('active');
+    document.getElementById('sheet-admin-dish').classList.remove('active');
+    $('ad-name').classList.remove('field-error');
+    $('ad-price').classList.remove('field-error');
+  }
+
+  async function persistMenu(toastMsg) {
+    const ok = await db.guardarMenu(TENANT, MENU);
+    if(ok) {
+      if(toastMsg) showToast(toastMsg, 'success');
+    } else {
+      showToast('Sin conexión: el cambio se aplicó solo en este dispositivo.');
+    }
+  }
+
+  function saveDish() {
+    const name = $('ad-name').value.trim();
+    const price = parseFloat($('ad-price').value);
+    if(!name || isNaN(price) || price <= 0) {
+      showToast('Completa el nombre y un precio válido.');
+      markInvalidFields(['ad-name','ad-price']);
+      return;
+    }
+    const isNew = editingDishId === null || editingDishId === undefined;
+    const acompId = $('ad-acomp').value ? parseInt($('ad-acomp').value, 10) : null;
+    const acompText = $('ad-acomp-text').value.trim();
+    const dish = {
+      id: isNew ? (MENU.length ? Math.max(...MENU.map(d => d.id)) + 1 : 1) : editingDishId,
+      name,
+      price,
+      cat: $('ad-cat').value,
+      desc: $('ad-desc').value.trim() || 'Preparado con ingredientes frescos y la receta original.',
+      ingred: $('ad-ingred').value.split(',').map(s => s.trim()).filter(Boolean),
+      acomp: acompText || (acompId && getDish(acompId) ? `Acompáñalo con ${getDish(acompId).name} para una experiencia completa.` : ''),
+      acompId: acompId || null
+    };
+    const img = $('ad-img').value.trim();
+    if(img) dish.img = img;
+    if(!dish.acompId) dish.acomp = '';
+
+    if(isNew) {
+      MENU.push(dish);
+    } else {
+      const idx = MENU.findIndex(d => d.id === dish.id);
+      if(idx !== -1) MENU[idx] = dish;
+    }
+
+    const avail = $('ad-avail').checked;
+    if(avail) state.soldOut = state.soldOut.filter(s => s !== dish.id);
+    else if(!state.soldOut.includes(dish.id)) state.soldOut.push(dish.id);
+    localStorage.setItem('sold_out_items', JSON.stringify(state.soldOut));
+
+    persistMenu('Plato guardado y publicado.');
+    renderMenu();
+    renderFavorites();
+    renderAdminMenu();
+    closeAdminEditor();
+  }
+
+  function deleteDish(id) {
+    const btn = document.getElementById('adm-del-' + id);
+    if(btn && !btn.classList.contains('confirm')) {
+      btn.classList.add('confirm');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M20 6L9 17l-5-5"/></svg>';
+      setTimeout(() => {
+        btn.classList.remove('confirm');
+        btn.innerHTML = DEL_ICON;
+      }, 2500);
+      return;
+    }
+    const idx = MENU.findIndex(d => d.id === id);
+    if(idx === -1) return;
+    MENU.splice(idx, 1);
+    state.favorites = state.favorites.filter(f => f !== id);
+    state.soldOut = state.soldOut.filter(s => s !== id);
+    localStorage.setItem('sold_out_items', JSON.stringify(state.soldOut));
+    persistMenu('Plato eliminado del menú.');
+    renderMenu();
+    renderFavorites();
+    renderAdminMenu();
+  }
+
+  async function saveConfig() {
+    const nombre = $('ad-cfg-name').value.trim();
+    const whatsapp = $('ad-cfg-wa').value.replace(/\D/g, '');
+    const delivery = parseFloat($('ad-cfg-delivery').value);
+    if(!nombre) {
+      showToast('Escribe el nombre del restaurante.');
+      markInvalidFields(['ad-cfg-name']);
+      return;
+    }
+    if(!/^[1-9]\d{6,14}$/.test(whatsapp)) {
+      showToast('El WhatsApp debe ser el número completo con código de país (ej: 584225604660).');
+      markInvalidFields(['ad-cfg-wa']);
+      return;
+    }
+    CONFIG = {
+      ...CONFIG,
+      nombre,
+      whatsapp,
+      delivery: (isNaN(delivery) || delivery < 0) ? 0 : delivery,
+      direccion: $('ad-cfg-dir').value.trim(),
+      horario: $('ad-cfg-horario').value.trim()
+    };
+    document.title = `${CONFIG.nombre} — Delivery`;
+    const ok = await db.guardarConfig(TENANT, { ...CONFIG, soldOut: state.soldOut });
+    showToast(ok ? 'Configuración guardada.' : 'Sin conexión: el cambio se aplicó solo en este dispositivo.', ok ? 'success' : 'error');
+    if($('cart-content').style.display !== 'none') renderCart(); // refresca el delivery si cambió
   }
 
   // AJUSTES
@@ -1575,7 +2392,7 @@
     if(!isNaN(val) && val > 0) {
       state.tasa = val;
       localStorage.setItem('tasa', val);
-      alert('Tasa guardada correctamente.');
+      showToast('Tasa guardada correctamente.', 'success');
       renderMenu(); // Update prices
     }
   }
@@ -1587,8 +2404,10 @@
       state.soldOut = state.soldOut.filter(i => i !== id);
     }
     localStorage.setItem('sold_out_items', JSON.stringify(state.soldOut));
+    db.guardarConfig(TENANT, { ...CONFIG, soldOut: state.soldOut }); // persiste por tenant
     renderFavorites();
     renderMenu();
+    if($('admin-menu-list')) renderAdminMenu();
   }
 
   function toggleFavorite(id, isFav) {
