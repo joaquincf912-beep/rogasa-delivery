@@ -149,6 +149,19 @@ export const db = {
         }
     },
 
+    // Marca el estado que ya fue notificado por push (evita duplicados).
+    // Lo escribe el panel de Cocina tras enviar el FCM.
+    async marcarNotificado(id, estado) {
+        if (!database || !id || !estado) return false;
+        try {
+            await database.ref('orders/' + id).update({ notified_estado: estado });
+            return true;
+        } catch (e) {
+            console.error('Firebase update error (notified):', e);
+            return false;
+        }
+    },
+
     suscribirAPedido(id, callback) {
         if (!database) {
             callback(null);
