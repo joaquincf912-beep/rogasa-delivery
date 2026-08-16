@@ -860,10 +860,6 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
       <p>No tienes ningún pedido activo en este momento.</p>
     </div>
-
-    <button class="btn-outline" onclick="probarSonidoNotif()" style="margin-top:8px">
-      🔔 Probar sonido de notificación
-    </button>
   </div>
 
   <!-- VIEW 4: COCINA -->
@@ -1406,17 +1402,6 @@
     } catch (e) { /* si el navegador bloquea el audio, la notificación visual sigue */ }
   }
 
-  // Botón de prueba: verifica el sonido al instante en cualquier dispositivo
-  function probarSonidoNotif() {
-    try {
-      unlockNotifAudio();
-      playNotifSound();
-      if (navigator.vibrate) navigator.vibrate(200);
-      showToast('🔔 Sonido de notificación' + (notifAudioEl ? ' (WAV)' : ' (Web Audio)'), 'success');
-    } catch (e) {
-      showToast('⚠️ No se pudo reproducir el sonido', 'error');
-    }
-  }
 
   // Vibración táctil en el teléfono del cliente (refuerzo del sonido)
   function vibrarNotif() {
@@ -1568,7 +1553,6 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.enviarPushCocina = enviarPushCocina;
   window.mintCocinaToken = mintCocinaToken;
   window.playNotifSound = playNotifSound;
-  window.probarSonidoNotif = probarSonidoNotif;
   window.__notifAudioDebug = () => ({
     ctx: notifAudioCtx ? notifAudioCtx.state : 'null',
     hidden: document.hidden,
