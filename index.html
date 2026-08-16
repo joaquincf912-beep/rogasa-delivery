@@ -2360,6 +2360,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
 
   function updateOrderStatus(id, status) {
     db.actualizarEstado(id, status);
+    // Confirmación sonora en el panel de Cocina (feedback al restaurante)
+    try { unlockNotifAudio(); playNotifSound(); } catch (e) {}
     // Push al cliente al instante (si tiene notificaciones activadas)
     const orden = (state.adminOrders || []).find(o => o && o.id === id);
     if (orden) enviarPushCocina({ ...orden, estado: status });
