@@ -268,6 +268,13 @@
     .fab-cart.bump { animation: fabBump 0.35s ease; }
 
     /* PROMO CAROUSEL */
+    /* BRAND HEADER (nombre + logo del restaurante) */
+    .brand-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding: 4px 2px; }
+    .brand-logo { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; flex: none; background: var(--c-surface-2); border: 2px solid var(--c-gold); box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
+    .brand-info { min-width: 0; }
+    .brand-name { font-family: var(--font-serif); font-size: 27px; font-weight: 700; color: var(--c-gold); line-height: 1.15; }
+    .brand-sub { font-size: 12px; color: var(--c-text-2); margin-top: 4px; line-height: 1.4; }
+
     .carousel-container {
       width: 100%;
       height: 160px;
@@ -826,6 +833,15 @@
   
   <!-- VIEW 1: INICIO -->
   <div id="view-inicio" class="view active">
+    <!-- Encabezado de marca: nombre y logo del restaurante (configurables desde Admin) -->
+    <div class="brand-header">
+      <img class="brand-logo" id="brand-logo" src="./img/logo.webp" alt="Logo" onerror="brandLogoFallback()">
+      <div class="brand-info">
+        <div class="brand-name" id="brand-name">Rogasa Café</div>
+        <div class="brand-sub" id="brand-sub"></div>
+      </div>
+    </div>
+
     <div class="carousel-container" onclick="openServicesSheet()">
       <div class="carousel-track">
         <div class="carousel-slide slide-1">
@@ -1037,6 +1053,7 @@
         <input type="number" id="ad-cfg-delivery" step="0.50" min="0" placeholder="Costo de delivery (USD)">
         <input type="text" id="ad-cfg-dir" placeholder="Dirección (opcional)">
         <input type="text" id="ad-cfg-horario" placeholder="Horario (opcional)">
+        <input type="text" id="ad-cfg-logo" placeholder="URL del logo (opcional, p. ej: https://...)">
         <button class="btn-primary" onclick="saveConfig()">Guardar Configuración</button>
       </div>
       
@@ -1221,8 +1238,41 @@
     whatsapp: '584225604660',
     delivery: 2,
     direccion: '',
-    horario: ''
+    horario: '',
+    logo: ''
   };
+
+  // Header de marca del inicio: nombre, subtítulo (dirección · horario) y logo.
+  function renderBrandHeader() {
+    const nameEl = document.getElementById('brand-name');
+    const subEl = document.getElementById('brand-sub');
+    const logoEl = document.getElementById('brand-logo');
+    if(nameEl) nameEl.textContent = CONFIG.nombre || 'Restaurante';
+    if(subEl) {
+      const partes = [CONFIG.direccion, CONFIG.horario].filter(Boolean);
+      subEl.textContent = partes.join(' · ');
+      subEl.style.display = partes.length ? '' : 'none';
+    }
+    if(logoEl) {
+      const src = (CONFIG.logo && CONFIG.logo.trim()) ? CONFIG.logo.trim() : './img/logo.webp';
+      if(logoEl.src.split('/').pop() !== src.split('/').pop() || logoEl.dataset.custom !== String(!!CONFIG.logo)) {
+        logoEl.dataset.custom = String(!!CONFIG.logo);
+        logoEl.src = src;
+      }
+    }
+  }
+
+  // Si el logo configurado falla, cae al logo por defecto; si ese también falla, se oculta.
+  function brandLogoFallback() {
+    const logoEl = document.getElementById('brand-logo');
+    if(!logoEl) return;
+    if(logoEl.dataset.custom === 'true') {
+      logoEl.dataset.custom = 'false';
+      logoEl.src = './img/logo.webp';
+    } else {
+      logoEl.style.display = 'none';
+    }
+  }
 
   function trackUrlFor(id) {
     return `https://menu.traccionweb.com/delivery/?id=${id}${TENANT !== 'rogasa' ? '&t=' + TENANT : ''}`;
@@ -1676,6 +1726,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.renderReportes = renderReportes;
   window.setReportRango = setReportRango;
   window.setReportEstado = setReportEstado;
+  window.renderBrandHeader = renderBrandHeader;
+  window.brandLogoFallback = brandLogoFallback;
   window.checkout = checkout;
   window.openDishEditor = openDishEditor;
   window.closeAdminEditor = closeAdminEditor;
@@ -1726,6 +1778,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       document.title = `${CONFIG.nombre} — Delivery`;
       const sst = document.getElementById('services-sheet-title');
       if(sst) sst.textContent = `Servicios ${CONFIG.nombre}`;
+      renderBrandHeader();
       renderMenu();
       renderFavorites();
       renderCategories();
@@ -2761,6 +2814,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     $('ad-cfg-delivery').value = CONFIG.delivery != null ? CONFIG.delivery : 2;
     $('ad-cfg-dir').value = CONFIG.direccion || '';
     $('ad-cfg-horario').value = CONFIG.horario || '';
+    $('ad-cfg-logo').value = CONFIG.logo || '';
     renderAdminMenu();
     ensureAdminOrders();
     renderReportes();
@@ -2929,9 +2983,11 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       whatsapp,
       delivery: (isNaN(delivery) || delivery < 0) ? 0 : delivery,
       direccion: $('ad-cfg-dir').value.trim(),
-      horario: $('ad-cfg-horario').value.trim()
+      horario: $('ad-cfg-horario').value.trim(),
+      logo: $('ad-cfg-logo').value.trim()
     };
     document.title = `${CONFIG.nombre} — Delivery`;
+    renderBrandHeader();
     const ok = await db.guardarConfig(TENANT, { ...CONFIG, soldOut: state.soldOut });
     showToast(ok ? 'Configuración guardada.' : 'Sin conexión: el cambio se aplicó solo en este dispositivo.', ok ? 'success' : 'error');
     if($('cart-content').style.display !== 'none') renderCart(); // refresca el delivery si cambió
