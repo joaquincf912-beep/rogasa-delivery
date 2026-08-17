@@ -28,8 +28,8 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(title, {
     body: body,
-    icon: './img/logo.webp',
-    badge: './img/logo.webp',
+    icon: './img/logo_clean.png',
+    badge: './img/logo_clean.png',
     sound: './img/notif-ding.wav',
     vibrate: [180, 90, 180],
     tag: data.orderId || 'pedido',

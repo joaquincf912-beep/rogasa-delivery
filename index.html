@@ -270,7 +270,17 @@
     /* PROMO CAROUSEL */
     /* BRAND HEADER (nombre + logo del restaurante) */
     .brand-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding: 4px 2px; }
-    .brand-logo { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; flex: none; background: var(--c-surface-2); border: 2px solid var(--c-gold); box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
+    .brand-logo {
+      width: 56px;
+      height: 72px;
+      object-fit: contain;
+      flex: none;
+      border-radius: 12px;
+      padding: 6px;
+      background: linear-gradient(180deg, #15151a, #0e0e11);
+      border: 1px solid rgba(201,168,76,0.35);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
     .brand-info { min-width: 0; }
     .brand-name { font-family: var(--font-serif); font-size: 27px; font-weight: 700; color: var(--c-gold); line-height: 1.15; }
     .brand-sub { font-size: 12px; color: var(--c-text-2); margin-top: 4px; line-height: 1.4; }
@@ -835,7 +845,7 @@
   <div id="view-inicio" class="view active">
     <!-- Encabezado de marca: nombre y logo del restaurante (configurables desde Admin) -->
     <div class="brand-header">
-      <img class="brand-logo" id="brand-logo" src="./img/logo.webp" alt="Logo" onerror="brandLogoFallback()">
+      <img class="brand-logo" id="brand-logo" src="./img/logo_clean.png" alt="Logo" onerror="brandLogoFallback()">
       <div class="brand-info">
         <div class="brand-name" id="brand-name">Rogasa Café</div>
         <div class="brand-sub" id="brand-sub"></div>
@@ -1254,7 +1264,7 @@
       subEl.style.display = partes.length ? '' : 'none';
     }
     if(logoEl) {
-      const src = (CONFIG.logo && CONFIG.logo.trim()) ? CONFIG.logo.trim() : './img/logo.webp';
+      const src = (CONFIG.logo && CONFIG.logo.trim()) ? CONFIG.logo.trim() : './img/logo_clean.png';
       if(logoEl.src.split('/').pop() !== src.split('/').pop() || logoEl.dataset.custom !== String(!!CONFIG.logo)) {
         logoEl.dataset.custom = String(!!CONFIG.logo);
         logoEl.src = src;
@@ -1262,12 +1272,15 @@
     }
   }
 
-  // Si el logo configurado falla, cae al logo por defecto; si ese también falla, se oculta.
+  // Si el logo configurado falla, cae al logo por defecto (limpio → original); si todos fallan, se oculta.
   function brandLogoFallback() {
     const logoEl = document.getElementById('brand-logo');
     if(!logoEl) return;
+    const actual = logoEl.getAttribute('src') || '';
     if(logoEl.dataset.custom === 'true') {
       logoEl.dataset.custom = 'false';
+      logoEl.src = './img/logo_clean.png';
+    } else if(actual.indexOf('logo_clean.png') !== -1) {
       logoEl.src = './img/logo.webp';
     } else {
       logoEl.style.display = 'none';
@@ -1464,8 +1477,8 @@
       try {
         const n = new Notification(CONFIG.nombre, {
           body,
-          icon: './img/logo.webp',
-          badge: './img/logo.webp',
+          icon: './img/logo_clean.png',
+          badge: './img/logo_clean.png',
           sound: './img/notif-ding.wav',
           tag: orderId,
           data: { url: trackUrlFor(orderId) }
