@@ -688,6 +688,40 @@
     input:checked + .slider { background-color: var(--c-gold-dim); border-color: var(--c-gold); }
     input:checked + .slider:before { transform: translateX(20px); background-color: var(--c-gold); }
 
+    /* REPORTS */
+    .rep-filt-label { font-size: 11px; color: var(--c-text-2); margin: 4px 0 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .rep-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .rep-stat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 14px; }
+    .rep-stat.wide { grid-column: 1 / -1; }
+    .rep-stat-label { font-size: 11px; color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .rep-stat-val { font-size: 22px; font-weight: 600; color: var(--c-gold); font-family: var(--font-serif); line-height: 1.1; }
+    .rep-stat-bs { font-size: 13px; color: var(--c-text-2); font-family: var(--font-sans); font-weight: 400; }
+    .rep-stat-sub { font-size: 12px; color: var(--c-text-2); margin-top: 6px; line-height: 1.4; }
+    .rep-top { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 14px; margin-top: 12px; }
+    .rep-top-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .rep-top-title small { font-size: 11px; color: var(--c-text-2); font-weight: 400; }
+    .rep-top-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+    .rep-top-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--c-gold-dim); color: var(--c-gold); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+    .rep-top-rank.r1 { background: var(--c-gold); color: var(--c-bg); }
+    .rep-top-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rep-top-qty { color: var(--c-gold); font-weight: 600; flex: none; }
+    .rep-top-more { font-size: 11px; color: var(--c-text-2); margin-top: 6px; }
+    .rep-list-title { font-size: 13px; font-weight: 600; margin: 18px 0 4px; display: flex; align-items: center; justify-content: space-between; }
+    .rep-list-title small { font-size: 11px; color: var(--c-text-2); font-weight: 400; }
+    .rep-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
+    .rep-row:last-child { border-bottom: none; }
+    .rep-row-info { flex: 1; min-width: 0; }
+    .rep-row-id { font-family: monospace; font-size: 12px; color: var(--c-gold); }
+    .rep-row-meta { font-size: 12px; color: var(--c-text-2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rep-row-total { font-size: 13px; font-weight: 600; text-align: right; flex: none; }
+    .rep-row-total small { display: block; font-weight: 400; color: var(--c-text-2); font-size: 11px; margin-top: 1px; }
+    .rep-badge { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; flex: none; }
+    .rep-badge.recibido { background: rgba(196,136,58,0.15); color: var(--c-warn); }
+    .rep-badge.pago_confirmado { background: var(--c-gold-dim); color: var(--c-gold); }
+    .rep-badge.cocina { background: var(--c-emerald-d); color: var(--c-emerald); }
+    .rep-badge.reparto { background: rgba(184,92,110,0.15); color: var(--c-rose); }
+    .rep-badge.entregado { background: rgba(255,255,255,0.08); color: var(--c-text-2); }
+
     /* EMPTY STATES */
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; color: var(--c-text-2); }
     .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; }
@@ -966,6 +1000,35 @@
     </div>
     
     <div id="admin-content" style="display:none">
+      <div class="settings-group">
+        <div class="section-title">Reportes</div>
+        <div class="subtitle" style="margin-bottom:12px">Historial de pedidos, ventas y platos más pedidos</div>
+
+        <div class="rep-filt-label">Periodo</div>
+        <div class="chip-scroll" id="rep-rango">
+          <div class="chip active" data-rango="hoy" onclick="setReportRango('hoy')">Hoy</div>
+          <div class="chip" data-rango="ayer" onclick="setReportRango('ayer')">Ayer</div>
+          <div class="chip" data-rango="7d" onclick="setReportRango('7d')">7 días</div>
+          <div class="chip" data-rango="30d" onclick="setReportRango('30d')">30 días</div>
+          <div class="chip" data-rango="todo" onclick="setReportRango('todo')">Todo</div>
+        </div>
+
+        <div class="rep-filt-label">Estado</div>
+        <div class="chip-scroll" id="rep-estado">
+          <div class="chip active" data-estado="todos" onclick="setReportEstado('todos')">Todos</div>
+          <div class="chip" data-estado="recibido" onclick="setReportEstado('recibido')">Recibido</div>
+          <div class="chip" data-estado="pago_confirmado" onclick="setReportEstado('pago_confirmado')">Pago Confirmado</div>
+          <div class="chip" data-estado="cocina" onclick="setReportEstado('cocina')">Cocina</div>
+          <div class="chip" data-estado="reparto" onclick="setReportEstado('reparto')">Reparto</div>
+          <div class="chip" data-estado="entregado" onclick="setReportEstado('entregado')">Entregado</div>
+        </div>
+
+        <div id="rep-stats"></div>
+        <div id="rep-top"></div>
+        <div class="rep-list-title" id="rep-list-title"></div>
+        <div id="rep-list"></div>
+      </div>
+
       <div class="settings-group">
         <div class="section-title">Mi Restaurante</div>
         <div class="subtitle" style="margin-bottom:12px">Datos que aparecen en WhatsApp y el seguimiento</div>
@@ -1610,6 +1673,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   });
   window.dismissOrder = dismissOrder;
   window.sendWhatsAppUpdate = sendWhatsAppUpdate;
+  window.renderReportes = renderReportes;
+  window.setReportRango = setReportRango;
+  window.setReportEstado = setReportEstado;
   window.checkout = checkout;
   window.openDishEditor = openDishEditor;
   window.closeAdminEditor = closeAdminEditor;
@@ -2441,52 +2507,212 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     `;
   }
 
-  function initCocina() {
-    // Ya estamos escuchando: no re-suscribir (evita refetch en cada cambio de pestaña)
+  // Suscripción compartida Cocina + Reportes (Admin). Una sola escucha en tiempo
+  // real para los pedidos de todos los restaurantes; cada vista renderiza lo suyo.
+  function ensureAdminOrders() {
     if(state.adminSubscribed) return;
     state.adminSubscribed = true;
 
     state.unsubscribeAdmin = db.suscribirATodosLosPedidos((pedidos) => {
       state.adminOrders = pedidos;
-      const cont = $('orders-container');
-      // Solo pedidos de este restaurante (los viejos sin campo 'restaurante' son de rogasa)
-      const filtered = pedidos.filter(p =>
-        !state.dismissedOrders.includes(p.id) &&
-        (!p.restaurante ? TENANT === 'rogasa' : p.restaurante === TENANT)
-      );
+      const cocinaVisible = document.getElementById('cocina-content').style.display !== 'none';
+      if(cocinaVisible) renderCocinaOrders();
+      const adminVisible = document.getElementById('admin-content').style.display !== 'none';
+      if(adminVisible) renderReportes();
+    });
+  }
 
-      if(filtered.length === 0) {
-        cont.innerHTML = `<div class="empty-state"><p>No hay pedidos activos.</p></div>`;
-        return;
+  function initCocina() {
+    ensureAdminOrders();
+    renderCocinaOrders();
+  }
+
+  function renderCocinaOrders() {
+    const pedidos = state.adminOrders || [];
+    const cont = $('orders-container');
+    // Solo pedidos de este restaurante (los viejos sin campo 'restaurante' son de rogasa)
+    const filtered = pedidos.filter(p =>
+      !state.dismissedOrders.includes(p.id) &&
+      (!p.restaurante ? TENANT === 'rogasa' : p.restaurante === TENANT)
+    );
+
+    if(filtered.length === 0) {
+      cont.innerHTML = `<div class="empty-state"><p>No hay pedidos activos.</p></div>`;
+      return;
+    }
+
+    const empty = cont.querySelector('.empty-state');
+    if(empty) empty.remove();
+
+    filtered.sort((a,b) => new Date(b.creado_en || b.creado_el) - new Date(a.creado_en || a.creado_el));
+
+    // Render diferencial: solo reconstruir las tarjetas que cambiaron
+    const htmlById = {};
+    filtered.forEach(p => { htmlById[p.id] = buildOrderCard(p); });
+
+    [...cont.children].forEach(child => {
+      if(child.id && child.id.startsWith('order-') && !htmlById[child.id.replace('order-','')]) child.remove();
+    });
+
+    filtered.forEach(p => {
+      const el = document.getElementById('order-' + p.id);
+      if(!el) {
+        cont.insertAdjacentHTML('beforeend', htmlById[p.id]);
+        const nuevo = document.getElementById('order-' + p.id);
+        if(nuevo) nuevo.dataset.html = htmlById[p.id];
+      } else if(el.dataset.html !== htmlById[p.id]) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = htmlById[p.id];
+        el.replaceWith(tmp.firstElementChild);
+        if(tmp.firstElementChild) tmp.firstElementChild.dataset.html = htmlById[p.id];
       }
+    });
+  }
 
-      const empty = cont.querySelector('.empty-state');
-      if(empty) empty.remove();
+  // === REPORTES (HISTORIAL Y VENTAS) ===
+  let repRango = 'hoy';
+  let repEstado = 'todos';
 
-      filtered.sort((a,b) => new Date(b.creado_en || b.creado_el) - new Date(a.creado_en || a.creado_el));
+  const REP_ESTADO_LABEL = {
+    recibido: 'Recibido',
+    pago_confirmado: 'Pago Confirmado',
+    cocina: 'Cocina',
+    reparto: 'Reparto',
+    entregado: 'Entregado'
+  };
 
-      // Render diferencial: solo reconstruir las tarjetas que cambiaron
-      const htmlById = {};
-      filtered.forEach(p => { htmlById[p.id] = buildOrderCard(p); });
+  function fmtUSD(v) {
+    return '$' + (Number(v) || 0).toFixed(2);
+  }
 
-      [...cont.children].forEach(child => {
-        if(child.id && child.id.startsWith('order-') && !htmlById[child.id.replace('order-','')]) child.remove();
-      });
+  function fmtBs(v) {
+    return 'Bs ' + (Number(v) || 0).toLocaleString('es-VE', { maximumFractionDigits: 2 });
+  }
 
-      filtered.forEach(p => {
-        const el = document.getElementById('order-' + p.id);
-        if(!el) {
-          cont.insertAdjacentHTML('beforeend', htmlById[p.id]);
-          const nuevo = document.getElementById('order-' + p.id);
-          if(nuevo) nuevo.dataset.html = htmlById[p.id];
-        } else if(el.dataset.html !== htmlById[p.id]) {
-          const tmp = document.createElement('div');
-          tmp.innerHTML = htmlById[p.id];
-          el.replaceWith(tmp.firstElementChild);
-          if(tmp.firstElementChild) tmp.firstElementChild.dataset.html = htmlById[p.id];
-        }
+  function repEnRango(ts, rango) {
+    const d = new Date(ts || 0);
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if(rango === 'hoy') return d >= start;
+    if(rango === 'ayer') {
+      const y = new Date(start);
+      y.setDate(y.getDate() - 1);
+      return d >= y && d < start;
+    }
+    if(rango === '7d') return d >= new Date(now.getTime() - 7 * 86400000);
+    if(rango === '30d') return d >= new Date(now.getTime() - 30 * 86400000);
+    return true;
+  }
+
+  function reportesOrdenes() {
+    const pedidos = state.adminOrders || [];
+    return pedidos
+      .filter(p => (!p.restaurante ? TENANT === 'rogasa' : p.restaurante === TENANT))
+      .filter(p => repEnRango(p.creado_en || p.creado_el, repRango))
+      .filter(p => repEstado === 'todos' || p.estado === repEstado)
+      .sort((a, b) => new Date(b.creado_en || b.creado_el) - new Date(a.creado_en || a.creado_el));
+  }
+
+  function renderReportes() {
+    const listado = reportesOrdenes();
+    const contStats = $('rep-stats');
+    const contTop = $('rep-top');
+    const contList = $('rep-list');
+    const contTitle = $('rep-list-title');
+    if(!contStats) return; // vista aún no renderizada
+
+    // --- Stats ---
+    let totalUsd = 0, totalBs = 0;
+    listado.forEach(p => {
+      totalUsd += Number(p.total_usd) || 0;
+      totalBs += Number(p.total_bs) || 0;
+    });
+    const count = listado.length;
+    const ticketUsd = count ? totalUsd / count : 0;
+    const ticketBs = count ? totalBs / count : 0;
+
+    contStats.innerHTML = `
+      <div class="rep-stat wide">
+        <div class="rep-stat-label">Total vendido</div>
+        <div class="rep-stat-val">${fmtUSD(totalUsd)} <span class="rep-stat-bs">· ${fmtBs(totalBs)}</span></div>
+        <div class="rep-stat-sub">${count} pedido${count === 1 ? '' : 's'} en el periodo seleccionado</div>
+      </div>
+      <div class="rep-stat">
+        <div class="rep-stat-label">Pedidos</div>
+        <div class="rep-stat-val">${count}</div>
+      </div>
+      <div class="rep-stat">
+        <div class="rep-stat-label">Ticket promedio</div>
+        <div class="rep-stat-val">${fmtUSD(ticketUsd)}</div>
+        <div class="rep-stat-sub">${fmtBs(ticketBs)}</div>
+      </div>`;
+
+    // --- Platos más pedidos ---
+    const porPlato = {};
+    listado.forEach(p => {
+      (p.items || []).forEach(i => {
+        const nombre = i.nombre || i.name || 'Producto';
+        const cant = Number(i.cantidad || i.q) || 1;
+        porPlato[nombre] = (porPlato[nombre] || 0) + cant;
       });
     });
+    const top = Object.entries(porPlato).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+    if(top.length) {
+      const totalPlatos = Object.values(porPlato).reduce((a, b) => a + b, 0);
+      contTop.innerHTML = `
+        <div class="rep-top">
+          <div class="rep-top-title">Platos más pedidos <small>${totalPlatos} unidades</small></div>
+          ${top.map(([nombre, qty], i) => `
+            <div class="rep-top-item">
+              <span class="rep-top-rank ${i === 0 ? 'r1' : ''}">${i + 1}</span>
+              <span class="rep-top-name">${nombre}</span>
+              <span class="rep-top-qty">${qty}×</span>
+            </div>`).join('')}
+        </div>`;
+    } else {
+      contTop.innerHTML = '';
+    }
+
+    // --- Historial ---
+    contTitle.innerHTML = `Historial ${count ? '<small>' + count + ' pedido' + (count === 1 ? '' : 's') + '</small>' : ''}`;
+    if(!listado.length) {
+      contList.innerHTML = `<div class="empty-state"><p>No hay pedidos en este periodo.</p></div>`;
+      return;
+    }
+
+    contList.innerHTML = listado.map(p => {
+      const ts = p.creado_en || p.creado_el;
+      const d = new Date(ts);
+      const fecha = isNaN(d) ? '' : d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }) + ' · ' +
+        d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+      const resumen = (p.items || []).slice(0, 3).map(i => `${Number(i.cantidad || i.q) || 1}× ${i.nombre || i.name}`).join(', ') +
+        ((p.items || []).length > 3 ? ` +${(p.items || []).length - 3} más` : '');
+      const estado = REP_ESTADO_LABEL[p.estado] || p.estado || '—';
+      return `
+        <div class="rep-row">
+          <div class="rep-row-info">
+            <div class="rep-row-id">${p.id} · ${fecha}</div>
+            <div class="rep-row-meta">${resumen}${resumen ? ' — ' : ''}${p.cliente_nombre || ''}</div>
+          </div>
+          <div>
+            <div class="rep-row-total">${fmtUSD(p.total_usd)}<small>${fmtBs(p.total_bs)}</small></div>
+          </div>
+          <span class="rep-badge ${p.estado || ''}">${estado}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function setReportRango(r) {
+    repRango = r;
+    document.querySelectorAll('#rep-rango .chip').forEach(c => c.classList.toggle('active', c.dataset.rango === r));
+    renderReportes();
+  }
+
+  function setReportEstado(e) {
+    repEstado = e;
+    document.querySelectorAll('#rep-estado .chip').forEach(c => c.classList.toggle('active', c.dataset.estado === e));
+    renderReportes();
   }
 
   function updateOrderStatus(id, status) {
@@ -2536,6 +2762,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     $('ad-cfg-dir').value = CONFIG.direccion || '';
     $('ad-cfg-horario').value = CONFIG.horario || '';
     renderAdminMenu();
+    ensureAdminOrders();
+    renderReportes();
   }
 
   function renderAdminMenu() {
