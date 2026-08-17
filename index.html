@@ -566,6 +566,7 @@
     }
     .pm-label { font-size: 11px; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .04em; }
     .pm-value { font-size: 14px; font-weight: 600; color: var(--c-text); }
+    .pm-value-monto { color: var(--c-gold); font-weight: 700; font-size: 15px; }
     .pm-copy-btn {
       display: flex;
       align-items: center;
@@ -2068,9 +2069,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     renderCart();
   }
 
-  // Copia los datos de Pago Móvil del restaurante al portapapeles
+  // Copia los datos de Pago Móvil del restaurante al portapapeles (incluye el monto)
   function copyPagoMovil() {
-    const text = 'Pago Movil — Banco de Venezuela\nTelefono: 0414-5604660\nCedula: 10135036';
+    const monto = (document.getElementById('pm-monto')?.textContent || '').trim();
+    const text = `Pago Movil — Banco de Venezuela\nMonto: ${monto}\nBanco: Banco de Venezuela\nTelefono: 0414-5604660\nCedula: 10135036`;
     const done = () => showToast('📋 Datos de pago copiados', 'success');
     const fail = () => showToast('No se pudo copiar automáticamente', 'error');
     try {
@@ -2177,8 +2179,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       <div class="pay-detail">
         <div class="pay-detail-box">
           <div class="pay-detail-title">Pago Móvil</div>
-          <div class="pm-total">Total a pagar: ${formatBs(totalConDelivery)}</div>
           <div class="pm-fields">
+            <div class="pm-field"><span class="pm-label">Monto</span><span class="pm-value pm-value-monto" id="pm-monto">${formatBs(totalConDelivery)}</span></div>
             <div class="pm-field"><span class="pm-label">Banco</span><span class="pm-value">Banco de Venezuela</span></div>
             <div class="pm-field"><span class="pm-label">Teléfono</span><span class="pm-value">0414-5604660</span></div>
             <div class="pm-field"><span class="pm-label">Cédula</span><span class="pm-value">10135036</span></div>
