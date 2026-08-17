@@ -368,7 +368,9 @@
     .promo-price { display: flex; align-items: baseline; gap: 8px; }
     .promo-orig { font-size: 12px; color: var(--c-text-3); text-decoration: line-through; }
     .promo-now { font-size: 17px; color: var(--c-gold); font-weight: 700; }
-    .promo-cta { display: block; margin-top: 10px; padding: 8px; border-radius: 8px; border: 1px solid var(--c-gold); color: var(--c-gold); font-size: 12px; font-weight: 600; text-align: center; }
+    .promo-cta { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--c-gold); color: var(--c-bg); font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+    .promo-cta:active { transform: scale(0.97); }
+    .promo-cta svg { width: 15px; height: 15px; flex-shrink: 0; }
 
     /* FAV CARDS */
     .fav-card {
@@ -1804,7 +1806,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.closePromoEditor = closePromoEditor;
   window.savePromo = savePromo;
   window.deletePromo = deletePromo;
-  window.openWhatsAppPromo = openWhatsAppPromo;
+  window.addPromoToCart = addPromoToCart;
   window.renderPromos = renderPromos;
   window.checkout = checkout;
   window.openDishEditor = openDishEditor;
@@ -2352,11 +2354,11 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
             <div class="cart-item-price">$${i.price}</div>
           </div>
           <div class="cart-controls">
-            <button onclick="updateCartQuantity(${i.id}, -1)">
+            <button onclick="updateCartQuantity('${i.id}', -1)">
               <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
             <span style="font-size:14px;font-weight:600;min-width:16px;text-align:center">${i.q}</span>
-            <button onclick="updateCartQuantity(${i.id}, 1)">
+            <button onclick="updateCartQuantity('${i.id}', 1)">
               <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           </div>
@@ -2919,17 +2921,26 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
             ${p.precio_orig ? `<span class="promo-orig">$${Number(p.precio_orig).toFixed(2)}</span>` : ''}
             <span class="promo-now">$${Number(p.precio).toFixed(2)}</span>
           </div>
-          <button class="promo-cta" onclick="openWhatsAppPromo('${p.titulo}')">Pedir esta promo</button>
+          <button class="promo-cta" onclick="addPromoToCart('${p.id}')" aria-label="Agregar ${p.titulo} al carrito">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            Agregar al carrito
+          </button>
         </div>
       </div>`).join('');
   }
 
-  function openWhatsAppPromo(titulo) {
-    let msg = `*${CONFIG.nombre.toUpperCase()}*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `*Quiero pedir la promo:* ${titulo}\n\n`;
-    msg += `¿Me la confirman?`;
-    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  // Agregar una promo al carrito como cualquier plato
+  function addPromoToCart(id) {
+    const p = PROMOS.find(x => x.id === id);
+    if(!p) return;
+    ensureFCM();
+    const existing = state.cart.find(i => i.id === id);
+    if(existing) existing.q++;
+    else {
+      state.cart.push({ id: p.id, name: p.titulo, price: p.precio, img: p.img || '', q: 1, esPromo: true });
+    }
+    updateCartBadge();
+    showToast(`${p.titulo} agregada al carrito`, 'success');
   }
 
   function renderAdminPromos() {
