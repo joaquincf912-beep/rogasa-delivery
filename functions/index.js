@@ -13,6 +13,7 @@ admin.initializeApp();
 
 const STATUS_TITLES = {
   recibido: 'Pedido recibido',
+  pago_confirmado: 'Pago confirmado',
   cocina: 'En cocina',
   reparto: 'En camino',
   entregado: 'Entregado'
@@ -20,6 +21,7 @@ const STATUS_TITLES = {
 
 const STATUS_LABELS = {
   recibido: 'Tu pedido ha sido recibido.',
+  pago_confirmado: 'Tu pago ha sido confirmado.',
   cocina: 'Estamos preparando tu pedido.',
   reparto: 'Tu pedido está en camino.',
   entregado: 'Tu pedido ha sido entregado. ¡Buen provecho!'

@@ -613,6 +613,7 @@
     .status-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
     .status-btn { padding: 10px; font-size: 12px; border-radius: 6px; background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-2); text-align: center; }
     .status-btn.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); font-weight: 600; }
+    .status-btn-full { grid-column: 1 / -1; }
 
     .whatsapp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 6px; background: var(--c-emerald-d); color: var(--c-emerald); border: 1px solid var(--c-emerald); font-size: 13px; font-weight: 500; }
 
@@ -867,8 +868,16 @@
           </div>
         </div>
         
-        <div class="step" id="step-cocina">
+        <div class="step" id="step-pago_confirmado">
           <div class="step-icon">2</div>
+          <div>
+            <div class="step-text">Pago Confirmado</div>
+            <div class="step-sub">Hemos confirmado tu pago</div>
+          </div>
+        </div>
+        
+        <div class="step" id="step-cocina">
+          <div class="step-icon">3</div>
           <div>
             <div class="step-text">En Cocina</div>
             <div class="step-sub">Preparando tus platillos</div>
@@ -876,7 +885,7 @@
         </div>
         
         <div class="step" id="step-reparto">
-          <div class="step-icon">3</div>
+          <div class="step-icon">4</div>
           <div>
             <div class="step-text">En Camino</div>
             <div class="step-sub">El repartidor va hacia ti</div>
@@ -884,7 +893,7 @@
         </div>
         
         <div class="step" id="step-entregado">
-          <div class="step-icon">4</div>
+          <div class="step-icon">5</div>
           <div>
             <div class="step-text">Entregado</div>
             <div class="step-sub">¡Buen provecho!</div>
@@ -1284,6 +1293,7 @@
   // === NOTIFICACIONES PUSH ===
   const STATUS_LABELS = {
     recibido: 'Tu pedido ha sido recibido.',
+    pago_confirmado: 'Tu pago ha sido confirmado.',
     cocina: 'Estamos preparando tu pedido.',
     reparto: 'Tu pedido está en camino.',
     entregado: 'Tu pedido ha sido entregado. ¡Buen provecho!'
@@ -2369,7 +2379,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   }
 
   function updateStepper(estado) {
-    const steps = ['recibido', 'cocina', 'reparto', 'entregado'];
+    const steps = ['recibido', 'pago_confirmado', 'cocina', 'reparto', 'entregado'];
     const idx = steps.indexOf(estado);
     
     steps.forEach((s, i) => {
@@ -2380,7 +2390,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     });
 
     const prog = $('track-progress');
-    prog.style.height = `${idx * 33.33}%`;
+    prog.style.height = `${idx * 25}%`;
   }
 
   // KITCHEN ADMIN
@@ -2418,9 +2428,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         </div>
         <div class="status-buttons">
           <button class="status-btn ${p.estado==='recibido'?'active':''}" onclick="updateOrderStatus('${p.id}', 'recibido')">Recibido</button>
+          <button class="status-btn ${p.estado==='pago_confirmado'?'active':''}" onclick="updateOrderStatus('${p.id}', 'pago_confirmado')">Pago Confirmado</button>
           <button class="status-btn ${p.estado==='cocina'?'active':''}" onclick="updateOrderStatus('${p.id}', 'cocina')">Cocina</button>
           <button class="status-btn ${p.estado==='reparto'?'active':''}" onclick="updateOrderStatus('${p.id}', 'reparto')">Reparto</button>
-          <button class="status-btn ${p.estado==='entregado'?'active':''}" onclick="updateOrderStatus('${p.id}', 'entregado')">Entregado</button>
+          <button class="status-btn status-btn-full ${p.estado==='entregado'?'active':''}" onclick="updateOrderStatus('${p.id}', 'entregado')">Entregado</button>
         </div>
         <button class="whatsapp-btn" onclick="sendWhatsAppUpdate('${p.telefono}', '${p.id}', '${p.estado}')">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
@@ -2497,6 +2508,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   function sendWhatsAppUpdate(phone, id, status) {
     const statusLabels = {
       recibido: 'Recibido — Tu pedido ha sido confirmado',
+      pago_confirmado: 'Pago Confirmado — Tu pago ha sido confirmado',
       cocina: 'En Cocina — Estamos preparando tu pedido',
       reparto: 'En Camino — El repartidor se dirige a tu ubicacion',
       entregado: 'Entregado — Tu pedido ha sido entregado'
