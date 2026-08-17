@@ -229,6 +229,17 @@ export const db = {
         }
     },
 
+    async guardarPromos(tenant, promos) {
+        if (!database) return false;
+        try {
+            await database.ref('restaurantes/' + tenant + '/promos').set(promos || []);
+            return true;
+        } catch (e) {
+            console.error('Firebase write error (promos):', e);
+            return false;
+        }
+    },
+
     async eliminarRestaurante(tenant) {
         if (!database) return false;
         try {

@@ -358,6 +358,18 @@
     }
     .h-scroll::-webkit-scrollbar { display: none; }
 
+    /* PROMO CARDS */
+    .promo-card { min-width: 230px; width: 230px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; overflow: hidden; position: relative; }
+    .promo-img { width: 100%; height: 118px; object-fit: cover; background: #222; }
+    .promo-badge { position: absolute; top: 10px; left: 10px; background: var(--c-gold); color: var(--c-bg); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .promo-info { padding: 12px; }
+    .promo-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .promo-desc { font-size: 12px; color: var(--c-text-2); margin-bottom: 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .promo-price { display: flex; align-items: baseline; gap: 8px; }
+    .promo-orig { font-size: 12px; color: var(--c-text-3); text-decoration: line-through; }
+    .promo-now { font-size: 17px; color: var(--c-gold); font-weight: 700; }
+    .promo-cta { display: block; margin-top: 10px; padding: 8px; border-radius: 8px; border: 1px solid var(--c-gold); color: var(--c-gold); font-size: 12px; font-weight: 600; text-align: center; }
+
     /* FAV CARDS */
     .fav-card {
       min-width: 140px;
@@ -636,6 +648,14 @@
     /* TOGGLES */
     .settings-group { margin-bottom: 32px; }
 
+    /* ADMIN PROMOS */
+    .admin-promo-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c-border); }
+    .admin-promo-row:last-child { border-bottom: none; }
+    .admin-promo-info { flex: 1; min-width: 0; }
+    .admin-promo-name { font-size: 14px; font-weight: 600; color: var(--c-text); }
+    .admin-promo-meta { font-size: 12px; color: var(--c-text-2); }
+    .admin-promo-price { font-size: 13px; color: var(--c-gold); font-weight: 600; flex: none; }
+
     /* ADMIN PANEL */
     .admin-add-btn {
       display: flex;
@@ -873,6 +893,11 @@
       </div>
     </div>
 
+    <div class="section-title" id="promos-title" style="display:none">Promociones</div>
+    <div class="h-scroll" id="promo-container" style="display:none">
+      <!-- Injected via JS -->
+    </div>
+
     <div class="section-title">Favoritos de la Semana</div>
     <div class="h-scroll" id="fav-container">
       <!-- Injected via JS -->
@@ -1067,6 +1092,16 @@
       </div>
       
       <div class="settings-group">
+        <div class="section-title">Promociones</div>
+        <div class="subtitle" style="margin-bottom:12px">Ofertas que ven los clientes en el inicio. Se publican al instante.</div>
+        <button class="admin-add-btn" onclick="openPromoEditor(null)">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar Promo
+        </button>
+        <div id="admin-promos-list"></div>
+      </div>
+
+      <div class="settings-group">
         <div class="section-title">Menú</div>
         <div class="subtitle" style="margin-bottom:12px">Agrega, edita o elimina platos. Los cambios se publican al instante.</div>
         <button class="admin-add-btn" onclick="openDishEditor(null)">
@@ -1225,6 +1260,30 @@
     </div>
   </div>
 
+  <!-- Admin Promo Editor Sheet -->
+  <div class="bottom-sheet" id="sheet-promo">
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closePromoEditor()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="sheet-content">
+      <div class="sheet-title" id="promo-title" style="margin-bottom:8px"></div>
+      <div class="subtitle" style="margin-bottom:20px">Se publica al instante en el inicio del cliente.</div>
+      <input type="text" id="promo-nombre" placeholder="Título de la promo (ej: Menú Degustación)">
+      <input type="text" id="promo-desc" placeholder="Descripción (ej: 5 tiempos con maridaje incluido)">
+      <div style="display:flex;gap:12px">
+        <input type="number" id="promo-orig" step="0.50" min="0" placeholder="Precio original (USD)" style="flex:1">
+        <input type="number" id="promo-precio" step="0.50" min="0" placeholder="Precio promo (USD)" style="flex:1">
+      </div>
+      <input type="text" id="promo-img" placeholder="URL de la imagen (opcional)">
+      <div class="admin-hint">Si no pones imagen, se genera una automática con el título.</div>
+      <div class="admin-save-row">
+        <button class="btn-outline" onclick="closePromoEditor()">Cancelar</button>
+        <button class="btn-primary" onclick="savePromo()">Guardar Promo</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script type="module">
@@ -1295,6 +1354,10 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg).replace(/'/g, '%27');
   }
   function dishImgSrc(d) { return (d.img && d.img.trim()) ? d.img.trim() : dishImgFallback(d.name); }
+
+  // PROMOS se carga desde Firebase por tenant; vacío hasta que el restaurante
+  // publique ofertas desde Admin.
+  let PROMOS = [];
 
   // MENU se carga desde Firebase por tenant; el menú de abajo es la plantilla
   // por defecto (y el de Rogasa hasta que se edite desde Admin).
@@ -1737,6 +1800,12 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.setReportEstado = setReportEstado;
   window.renderBrandHeader = renderBrandHeader;
   window.brandLogoFallback = brandLogoFallback;
+  window.openPromoEditor = openPromoEditor;
+  window.closePromoEditor = closePromoEditor;
+  window.savePromo = savePromo;
+  window.deletePromo = deletePromo;
+  window.openWhatsAppPromo = openWhatsAppPromo;
+  window.renderPromos = renderPromos;
   window.checkout = checkout;
   window.openDishEditor = openDishEditor;
   window.closeAdminEditor = closeAdminEditor;
@@ -1778,6 +1847,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           state.soldOut = data.config.soldOut;
         }
       }
+      if (data && Array.isArray(data.promos)) {
+        PROMOS = data.promos;
+      }
       // Si el menú del tenant no comparte los favoritos por defecto,
       // destacar los primeros platos disponibles.
       const matched = state.favorites.filter(id => getDish(id));
@@ -1788,6 +1860,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       const sst = document.getElementById('services-sheet-title');
       if(sst) sst.textContent = `Servicios ${CONFIG.nombre}`;
       renderBrandHeader();
+      renderPromos();
       renderMenu();
       renderFavorites();
       renderCategories();
@@ -2813,6 +2886,142 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
+  // === PROMOCIONES ===
+  let editingPromoId = null;
+
+  function promoImgFallback(titulo) {
+    const letter = (titulo || 'P').trim().charAt(0).toUpperCase() || 'P';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="236"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2b2518"/><stop offset="100%" stop-color="#161613"/></linearGradient></defs><rect width="460" height="236" fill="url(#g)"/><text x="230" y="150" font-size="120" font-family="Georgia, serif" fill="#c9a84c" text-anchor="middle">${letter}</text></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg).replace(/'/g, '%27');
+  }
+
+  function promoImgSrc(p) { return (p.img && p.img.trim()) ? p.img.trim() : promoImgFallback(p.titulo); }
+
+  function renderPromos() {
+    const cont = $('promo-container');
+    const title = $('promos-title');
+    if(!cont) return;
+    if(!PROMOS.length) {
+      cont.style.display = 'none';
+      title.style.display = 'none';
+      return;
+    }
+    title.style.display = '';
+    cont.style.display = '';
+    cont.innerHTML = PROMOS.map(p => `
+      <div class="promo-card">
+        <img class="promo-img" src="${promoImgSrc(p)}" alt="${p.titulo}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${promoImgFallback(p.titulo)}'">
+        <span class="promo-badge">Promo</span>
+        <div class="promo-info">
+          <div class="promo-name">${p.titulo}</div>
+          ${p.desc ? `<div class="promo-desc">${p.desc}</div>` : ''}
+          <div class="promo-price">
+            ${p.precio_orig ? `<span class="promo-orig">$${Number(p.precio_orig).toFixed(2)}</span>` : ''}
+            <span class="promo-now">$${Number(p.precio).toFixed(2)}</span>
+          </div>
+          <button class="promo-cta" onclick="openWhatsAppPromo('${p.titulo}')">Pedir esta promo</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function openWhatsAppPromo(titulo) {
+    let msg = `*${CONFIG.nombre.toUpperCase()}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Quiero pedir la promo:* ${titulo}\n\n`;
+    msg += `¿Me la confirman?`;
+    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  function renderAdminPromos() {
+    const cont = $('admin-promos-list');
+    if(!cont) return;
+    cont.innerHTML = PROMOS.map(p => `
+      <div class="admin-promo-row">
+        <div class="admin-promo-info">
+          <div class="admin-promo-name">${p.titulo}${p.precio_orig ? ` <span style="text-decoration:line-through;color:var(--c-text-3);font-weight:400">$${Number(p.precio_orig).toFixed(2)}</span>` : ''}</div>
+          <div class="admin-promo-meta">${p.desc || 'Sin descripción'}</div>
+        </div>
+        <div class="admin-promo-price">$${Number(p.precio).toFixed(2)}</div>
+        <div class="admin-dish-actions">
+          <button class="admin-icon-btn" onclick="openPromoEditor('${p.id}')" title="Editar" aria-label="Editar ${p.titulo}">
+            <svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+          </button>
+          <button class="admin-icon-btn danger" id="adm-del-promo-${p.id}" onclick="deletePromo('${p.id}')" title="Eliminar" aria-label="Eliminar ${p.titulo}">${DEL_ICON}</button>
+        </div>
+      </div>`).join('') || '<div class="empty-state" style="display:flex;padding:16px"><p>Sin promos todavía. Agrega la primera.</p></div>';
+  }
+
+  function openPromoEditor(id) {
+    editingPromoId = id;
+    const isNew = id === null || id === undefined;
+    $('promo-title').textContent = isNew ? 'Nueva Promo' : 'Editar Promo';
+    const p = isNew ? null : PROMOS.find(x => x.id === id);
+    $('promo-nombre').value = p ? p.titulo : '';
+    $('promo-desc').value = p ? (p.desc || '') : '';
+    $('promo-orig').value = p && p.precio_orig != null ? p.precio_orig : '';
+    $('promo-precio').value = p && p.precio != null ? p.precio : '';
+    $('promo-img').value = p ? (p.img || '') : '';
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-promo').classList.add('active');
+  }
+
+  function closePromoEditor() {
+    document.getElementById('sheet-overlay').classList.remove('active');
+    document.getElementById('sheet-promo').classList.remove('active');
+    $('promo-nombre').classList.remove('field-error');
+    $('promo-precio').classList.remove('field-error');
+  }
+
+  async function persistPromos(toastMsg) {
+    const ok = await db.guardarPromos(TENANT, PROMOS);
+    if(ok) { if(toastMsg) showToast(toastMsg, 'success'); }
+    else { showToast('Sin conexión: el cambio se aplicó solo en este dispositivo.'); }
+  }
+
+  function savePromo() {
+    const titulo = $('promo-nombre').value.trim();
+    const precio = parseFloat($('promo-precio').value);
+    if(!titulo || isNaN(precio) || precio <= 0) {
+      showToast('Completa el título y un precio válido.');
+      markInvalidFields(['promo-nombre','promo-precio']);
+      return;
+    }
+    const orig = parseFloat($('promo-orig').value);
+    const isNew = editingPromoId === null || editingPromoId === undefined;
+    const promo = {
+      id: isNew ? 'promo_' + Math.random().toString(36).substring(2, 8) : editingPromoId,
+      titulo,
+      desc: $('promo-desc').value.trim(),
+      precio_orig: (!isNaN(orig) && orig > 0) ? orig : null,
+      precio
+    };
+    const img = $('promo-img').value.trim();
+    if(img) promo.img = img;
+    if(isNew) PROMOS.push(promo);
+    else {
+      const idx = PROMOS.findIndex(x => x.id === editingPromoId);
+      if(idx !== -1) PROMOS[idx] = promo;
+    }
+    persistPromos('Promo publicada.');
+    renderPromos();
+    renderAdminPromos();
+    closePromoEditor();
+  }
+
+  function deletePromo(id) {
+    const btn = document.getElementById('adm-del-promo-' + id);
+    if(btn && !btn.classList.contains('confirm')) {
+      btn.classList.add('confirm');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M20 6L9 17l-5-5"/></svg>';
+      setTimeout(() => { btn.classList.remove('confirm'); btn.innerHTML = DEL_ICON; }, 2500);
+      return;
+    }
+    PROMOS = PROMOS.filter(x => x.id !== id);
+    persistPromos('Promo eliminada.');
+    renderPromos();
+    renderAdminPromos();
+  }
+
   // ADMIN PANEL (multi-tenant)
   let editingDishId = null;
   const DEL_ICON = '<svg viewBox="0 0 24 24" style="width:15px;height:15px"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
@@ -2825,6 +3034,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     $('ad-cfg-horario').value = CONFIG.horario || '';
     $('ad-cfg-logo').value = CONFIG.logo || '';
     renderAdminMenu();
+    renderAdminPromos();
     ensureAdminOrders();
     renderReportes();
   }
