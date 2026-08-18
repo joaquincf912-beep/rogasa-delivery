@@ -10,14 +10,14 @@
       <stop offset="100%" stop-color="#e5433c" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="ring" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="82%" stop-color="#c9a84c" stop-opacity="0"/>
-      <stop offset="88%" stop-color="#c9a84c" stop-opacity="0.35"/>
-      <stop offset="93%" stop-color="#c9a84c" stop-opacity="0"/>
+      <stop offset="82%" stop-color="#f5c518" stop-opacity="0"/>
+      <stop offset="88%" stop-color="#f5c518" stop-opacity="0.35"/>
+      <stop offset="93%" stop-color="#f5c518" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect width="480" height="360" fill="url(#bg)"/>
   <rect width="480" height="360" fill="url(#glow)"/>
   <rect width="480" height="360" fill="url(#ring)"/>
-  <rect x="1" y="1" width="478" height="358" rx="18" fill="none" stroke="rgba(201,168,76,0.25)" stroke-width="2"/>
+  <rect x="1" y="1" width="478" height="358" rx="18" fill="none" stroke="rgba(245,197,24,0.25)" stroke-width="2"/>
   <text x="240" y="215" font-size="150" text-anchor="middle" dominant-baseline="middle">🥟</text>
 </svg>
