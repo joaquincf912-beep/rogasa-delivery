@@ -336,13 +336,6 @@
     }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-border-h); transition: background 0.3s, transform 0.3s; }
     .dot.active { background: var(--c-gold); transform: scale(1.45); }
-    .dot:nth-child(1) { animation: dot1 12s infinite; }
-    .dot:nth-child(2) { animation: dot2 12s infinite; }
-    .dot:nth-child(3) { animation: dot3 12s infinite; }
-    
-    @keyframes dot1 { 0%, 28%, 100% { background: var(--c-gold); } 33.33%, 95% { background: var(--c-border-h); } }
-    @keyframes dot2 { 0%, 28%, 66.66%, 100% { background: var(--c-border-h); } 33.33%, 61% { background: var(--c-gold); } }
-    @keyframes dot3 { 0%, 61%, 100% { background: var(--c-border-h); } 66.66%, 95% { background: var(--c-gold); } }
 
     /* HORIZONTAL SCROLL LISTS */
     .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
@@ -1023,7 +1016,7 @@
         <div class="section-title">Tasa de Cambio (Bs/USD)</div>
         <div style="display:flex;gap:12px">
           <input type="number" id="tasa-input" step="0.01">
-          <button class="btn-outline" style="width:auto" onclick="saveTasa()">Guardar</button>
+          <button class="btn-outline" style="width:auto;display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 22px" onclick="saveTasa()">Guardar</button>
         </div>
       </div>
       
