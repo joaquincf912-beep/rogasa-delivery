@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f1c14"/>
+      <stop offset="55%" stop-color="#15151a"/>
+      <stop offset="100%" stop-color="#120f0f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.55">
+      <stop offset="0%" stop-color="#e5433c" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#e5433c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ring" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="82%" stop-color="#c9a84c" stop-opacity="0"/>
+      <stop offset="88%" stop-color="#c9a84c" stop-opacity="0.35"/>
+      <stop offset="93%" stop-color="#c9a84c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="480" height="360" fill="url(#bg)"/>
+  <rect width="480" height="360" fill="url(#glow)"/>
+  <rect width="480" height="360" fill="url(#ring)"/>
+  <rect x="1" y="1" width="478" height="358" rx="18" fill="none" stroke="rgba(201,168,76,0.25)" stroke-width="2"/>
+  <text x="240" y="215" font-size="150" text-anchor="middle" dominant-baseline="middle">🌭</text>
+</svg>
