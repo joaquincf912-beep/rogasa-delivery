@@ -20,7 +20,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="./img/banner_evento.webp" fetchpriority="high">
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
@@ -866,25 +865,8 @@
     </div>
 
     <div class="carousel-container" onclick="openServicesSheet()">
-      <div class="carousel-track">
-        <div class="carousel-slide slide-1">
-          <div class="slide-title">Reserva tu Noche Especial</div>
-          <div class="slide-desc">Celebra con nosotros. Espacios exclusivos para eventos y reuniones inolvidables.</div>
-        </div>
-        <div class="carousel-slide slide-2">
-          <div class="slide-title">Menu Degustacion del Chef</div>
-          <div class="slide-desc">Una experiencia de 5 tiempos que despertará todos tus sentidos.</div>
-        </div>
-        <div class="carousel-slide slide-3">
-          <div class="slide-title">Viernes de Musica en Vivo</div>
-          <div class="slide-desc">Acompaña tu cena con las mejores bandas de jazz y bossa nova locales.</div>
-        </div>
-      </div>
-      <div class="carousel-dots">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-      </div>
+      <div class="carousel-track" id="carousel-track"></div>
+      <div class="carousel-dots" id="carousel-dots"></div>
     </div>
 
     <div class="section-title" id="promos-title" style="display:none">Promociones</div>
@@ -1082,6 +1064,10 @@
         <input type="text" id="ad-cfg-dir" placeholder="Dirección (opcional)">
         <input type="text" id="ad-cfg-horario" placeholder="Horario (opcional)">
         <input type="text" id="ad-cfg-logo" placeholder="URL del logo (opcional, p. ej: https://...)">
+        <div class="subtitle" style="margin-top:16px">Datos de Pago Móvil (los ve el cliente al pagar)</div>
+        <input type="text" id="ad-cfg-pm-banco" placeholder="Banco (ej: Banco de Venezuela)">
+        <input type="tel" id="ad-cfg-pm-tel" placeholder="Teléfono (ej: 0414-5604660)">
+        <input type="text" id="ad-cfg-pm-ced" placeholder="Cédula (ej: 10135036)">
         <button class="btn-primary" onclick="saveConfig()">Guardar Configuración</button>
       </div>
       
@@ -1189,31 +1175,8 @@
       <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
     <div class="sheet-content">
-      <div class="sheet-title" id="services-sheet-title" style="margin-bottom:24px">Servicios Rogasa</div>
-      
-      <div class="settings-item">
-        <div class="settings-item-info">
-          <div class="settings-item-name" style="font-weight:600">Eventos y Reservaciones</div>
-          <div class="settings-item-cat">Celebra tu momento especial con nosotros</div>
-        </div>
-        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('evento')">Reservar</button>
-      </div>
-      
-      <div class="settings-item">
-        <div class="settings-item-info">
-          <div class="settings-item-name" style="font-weight:600">Menú Degustación</div>
-          <div class="settings-item-cat">Experiencia de 5 tiempos guiada por el chef</div>
-        </div>
-        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('degustacion')">Reservar</button>
-      </div>
-      
-      <div class="settings-item" style="border:none">
-        <div class="settings-item-info">
-          <div class="settings-item-name" style="font-weight:600">Música en Vivo (Viernes)</div>
-          <div class="settings-item-cat">Reserva tu mesa cerca del escenario</div>
-        </div>
-        <button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('musica')">Reservar</button>
-      </div>
+      <div class="sheet-title" id="services-sheet-title" style="margin-bottom:24px">Servicios</div>
+      <div id="services-list"></div>
     </div>
   </div>
 
@@ -1301,8 +1264,76 @@
     delivery: 2,
     direccion: '',
     horario: '',
-    logo: ''
+    logo: '',
+    pm_banco: 'Banco de Venezuela',
+    pm_telefono: '0414-5604660',
+    pm_cedula: '10135036',
+    banners: null,
+    servicios: null
   };
+
+  // Banners por defecto (Rogasa). Cada restaurante puede publicar los suyos
+  // desde su config en Firebase (banners: [{titulo, desc, img}])
+  const DEFAULT_BANNERS = [
+    { titulo: 'Reserva tu Noche Especial', desc: 'Celebra con nosotros. Espacios exclusivos para eventos y reuniones inolvidables.', img: './img/banner_evento.webp' },
+    { titulo: 'Menu Degustacion del Chef', desc: 'Una experiencia de 5 tiempos que despertará todos tus sentidos.', img: './img/banner_degustacion.webp' },
+    { titulo: 'Viernes de Musica en Vivo', desc: 'Acompaña tu cena con las mejores bandas de jazz y bossa nova locales.', img: './img/banner_musica.webp' }
+  ];
+
+  // Servicios por defecto (Rogasa). wa:true = botón directo a WhatsApp
+  const DEFAULT_SERVICIOS = [
+    { tipo: 'evento', titulo: 'Eventos y Reservaciones', desc: 'Celebra tu momento especial con nosotros', wa: false },
+    { tipo: 'degustacion', titulo: 'Menú Degustación', desc: 'Experiencia de 5 tiempos guiada por el chef', wa: false },
+    { tipo: 'musica', titulo: 'Música en Vivo (Viernes)', desc: 'Reserva tu mesa cerca del escenario', wa: false }
+  ];
+  let RESERVA_SERVICIOS = {};
+
+  function renderBanners() {
+    const track = document.getElementById('carousel-track');
+    const dotsEl = document.getElementById('carousel-dots');
+    if(!track || !dotsEl) return;
+    const banners = (Array.isArray(CONFIG.banners) && CONFIG.banners.length) ? CONFIG.banners : DEFAULT_BANNERS;
+    const n = banners.length;
+    track.style.width = (n * 100) + '%';
+    track.innerHTML = banners.map(b => `
+      <div class="carousel-slide" style="width:${100 / n}%;background-image:linear-gradient(180deg, rgba(8,8,10,0.42), rgba(8,8,10,0.88)), url('${b.img || ''}');">
+        <div class="slide-title">${b.titulo || ''}</div>
+        ${b.desc ? `<div class="slide-desc">${b.desc}</div>` : ''}
+      </div>`).join('');
+    dotsEl.innerHTML = banners.map(() => '<div class="dot"></div>').join('');
+    if(carousel) carousel.refresh();
+  }
+
+  function renderServicios() {
+    const cont = document.getElementById('services-list');
+    if(!cont) return;
+    const servicios = (Array.isArray(CONFIG.servicios) && CONFIG.servicios.length) ? CONFIG.servicios : DEFAULT_SERVICIOS;
+    RESERVA_SERVICIOS = {};
+    servicios.forEach(s => { RESERVA_SERVICIOS[s.tipo] = { title: s.titulo, nombre: s.titulo }; });
+    cont.innerHTML = servicios.map((s, i) => `
+      <div class="settings-item" ${i === servicios.length - 1 ? 'style="border:none"' : ''}>
+        <div class="settings-item-info">
+          <div class="settings-item-name" style="font-weight:600">${s.titulo}</div>
+          <div class="settings-item-cat">${s.desc || ''}</div>
+        </div>
+        ${s.wa
+          ? `<button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWaServicio('${s.tipo}')">Pedir por WhatsApp</button>`
+          : `<button class="btn-outline" style="width:auto;padding:8px 16px" onclick="openWhatsAppReserva('${s.tipo}')">Reservar</button>`}
+      </div>`).join('');
+  }
+
+  // Botón directo a WhatsApp para servicios de comida rápida (sin formulario)
+  function openWaServicio(tipo) {
+    const list = (Array.isArray(CONFIG.servicios) && CONFIG.servicios.length) ? CONFIG.servicios : DEFAULT_SERVICIOS;
+    const s = list.find(x => x.tipo === tipo);
+    if(!s) return;
+    let msg = `*${CONFIG.nombre.toUpperCase()}*\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Quiero: ${s.titulo}*\n\n`;
+    if(s.desc) msg += `${s.desc}\n\n`;
+    msg += `¿Me pasan el detalle por favor?`;
+    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+    closeSheets();
+  }
 
   // Header de marca del inicio: nombre, subtítulo (dirección · horario) y logo.
   function renderBrandHeader() {
@@ -1801,6 +1832,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.setReportEstado = setReportEstado;
   window.renderBrandHeader = renderBrandHeader;
   window.brandLogoFallback = brandLogoFallback;
+  window.openWaServicio = openWaServicio;
+  window.renderServicios = renderServicios;
   window.openPromoEditor = openPromoEditor;
   window.closePromoEditor = closePromoEditor;
   window.savePromo = savePromo;
@@ -1861,6 +1894,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       const sst = document.getElementById('services-sheet-title');
       if(sst) sst.textContent = `Servicios ${CONFIG.nombre}`;
       renderBrandHeader();
+      renderBanners();
+      renderServicios();
       renderPromos();
       renderMenu();
       renderFavorites();
@@ -2163,12 +2198,6 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     }, { passive: true });
   });
 
-  const RESERVA_SERVICIOS = {
-    evento:      { title: 'Eventos y Reservaciones',   nombre: 'Evento Especial' },
-    degustacion: { title: 'Menú Degustación del Chef', nombre: 'Menú Degustación del Chef' },
-    musica:      { title: 'Música en Vivo (Viernes)',  nombre: 'Música en Vivo (Viernes)' }
-  };
-
   function openWhatsAppReserva(type) {
     const s = RESERVA_SERVICIOS[type];
     if(!s) return;
@@ -2291,7 +2320,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   // Copia los datos de Pago Móvil del restaurante al portapapeles (incluye el monto)
   function copyPagoMovil() {
     const monto = (document.getElementById('pm-monto')?.textContent || '').trim();
-    const text = `Pago Movil — Banco de Venezuela\nMonto: ${monto}\nBanco: Banco de Venezuela\nTelefono: 0414-5604660\nCedula: 10135036`;
+    const banco = CONFIG.pm_banco || 'Banco de Venezuela';
+    const tel = CONFIG.pm_telefono || '0414-5604660';
+    const ced = CONFIG.pm_cedula || '10135036';
+    const text = `Pago Movil — ${banco}\nMonto: ${monto}\nBanco: ${banco}\nTelefono: ${tel}\nCedula: ${ced}`;
     const done = () => showToast('📋 Datos de pago copiados', 'success');
     const fail = () => showToast('No se pudo copiar automáticamente', 'error');
     try {
@@ -2400,9 +2432,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           <div class="pay-detail-title">Pago Móvil</div>
           <div class="pm-fields">
             <div class="pm-field"><span class="pm-label">Monto</span><span class="pm-value pm-value-monto" id="pm-monto">${formatBs(totalConDelivery)}</span></div>
-            <div class="pm-field"><span class="pm-label">Banco</span><span class="pm-value">Banco de Venezuela</span></div>
-            <div class="pm-field"><span class="pm-label">Teléfono</span><span class="pm-value">0414-5604660</span></div>
-            <div class="pm-field"><span class="pm-label">Cédula</span><span class="pm-value">10135036</span></div>
+            <div class="pm-field"><span class="pm-label">Banco</span><span class="pm-value">${CONFIG.pm_banco || 'Banco de Venezuela'}</span></div>
+            <div class="pm-field"><span class="pm-label">Teléfono</span><span class="pm-value">${CONFIG.pm_telefono || '0414-5604660'}</span></div>
+            <div class="pm-field"><span class="pm-label">Cédula</span><span class="pm-value">${CONFIG.pm_cedula || '10135036'}</span></div>
           </div>
           <button class="btn-outline pm-copy-btn" onclick="copyPagoMovil()">
             <svg viewBox="0 0 24 24" style="width:15px;height:15px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
@@ -2483,7 +2515,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       }
       metodoLabel = 'Pago Móvil';
       payShort = `Pago Móvil (Ref: ${refN})`;
-      payMsg = `*Metodo de Pago:* Pago Movil\n*Banco:* Banco de Venezuela\n*Telefono:* 0414-5604660\n*Cedula:* 10135036\n*N° Referencia:* ${refN}\n`;
+      payMsg = `*Metodo de Pago:* Pago Movil\n*Banco:* ${CONFIG.pm_banco || 'Banco de Venezuela'}\n*Telefono:* ${CONFIG.pm_telefono || '0414-5604660'}\n*Cedula:* ${CONFIG.pm_cedula || '10135036'}\n*N° Referencia:* ${refN}\n`;
     } else {
       const moneda = (document.getElementById('pay-moneda')?.value || 'bs') === 'usd' ? 'Dólares ($)' : 'Bolívares (Bs.)';
       const billete = (document.getElementById('pay-billete')?.value || '').trim();
@@ -3050,6 +3082,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     $('ad-cfg-dir').value = CONFIG.direccion || '';
     $('ad-cfg-horario').value = CONFIG.horario || '';
     $('ad-cfg-logo').value = CONFIG.logo || '';
+    $('ad-cfg-pm-banco').value = CONFIG.pm_banco || '';
+    $('ad-cfg-pm-tel').value = CONFIG.pm_telefono || '';
+    $('ad-cfg-pm-ced').value = CONFIG.pm_cedula || '';
     renderAdminMenu();
     renderAdminPromos();
     ensureAdminOrders();
@@ -3222,7 +3257,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       delivery: (isNaN(delivery) || delivery < 0) ? 0 : delivery,
       direccion: $('ad-cfg-dir').value.trim(),
       horario: $('ad-cfg-horario').value.trim(),
-      logo: $('ad-cfg-logo').value.trim()
+      logo: $('ad-cfg-logo').value.trim(),
+      pm_banco: $('ad-cfg-pm-banco').value.trim(),
+      pm_telefono: $('ad-cfg-pm-tel').value.trim(),
+      pm_cedula: $('ad-cfg-pm-ced').value.trim()
     };
     document.title = `${CONFIG.nombre} — Delivery`;
     renderBrandHeader();
@@ -3299,22 +3337,27 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     renderFavorites();
   }
 
-  // CARRUSEL: auto-avance + deslizamiento táctil y con ratón
+  // CARRUSEL: auto-avance + deslizamiento táctil y con ratón.
+  // Soporta banners dinámicos por restaurante (carousel.refresh() re-ancora
+  // al cambiar la cantidad de slides/dots).
+  let carousel = null;
   function initCarousel() {
     const container = document.querySelector('.carousel-container');
     const track = document.querySelector('.carousel-track');
-    const dots = Array.from(document.querySelectorAll('.carousel-dots .dot'));
-    if(!container || !track || !dots.length) return;
-    const n = dots.length;
+    if(!container || !track) return;
+    if(carousel) { carousel.refresh(); return; }
+
     let idx = 0;
     let timer = null;
     let startX = 0, startY = 0, deltaX = 0, dragging = false, suppressedClick = false;
+    const dotsEl = () => Array.from(document.querySelectorAll('.carousel-dots .dot'));
+    const n = () => dotsEl().length || 3;
 
     function goTo(i, animate) {
-      idx = (i + n) % n;
+      idx = (i + n()) % n();
       track.style.transition = animate === false ? 'none' : '';
-      track.style.transform = `translateX(-${idx * (100 / n)}%)`;
-      dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+      track.style.transform = `translateX(-${idx * (100 / n())}%)`;
+      dotsEl().forEach((d, k) => d.classList.toggle('active', k === idx));
     }
     function next() { goTo(idx + 1); }
     function prev() { goTo(idx - 1); }
@@ -3339,7 +3382,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       if(Math.abs(dx) > Math.abs(dy)) {
         deltaX = dx;
         track.style.transition = 'none';
-        track.style.transform = `translateX(calc(-${idx * (100 / n)}% + ${dx}px))`;
+        track.style.transform = `translateX(calc(-${idx * (100 / n())}% + ${dx}px))`;
       }
     }, { passive: true });
     container.addEventListener('touchend', (e) => {
@@ -3373,7 +3416,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       if(Math.abs(dx) > Math.abs(dy)) {
         deltaX = dx;
         track.style.transition = 'none';
-        track.style.transform = `translateX(calc(-${idx * (100 / n)}% + ${dx}px))`;
+        track.style.transform = `translateX(calc(-${idx * (100 / n())}% + ${dx}px))`;
       }
     });
     window.addEventListener('mouseup', (e) => {
@@ -3399,8 +3442,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       }
     }, true);
 
-    goTo(0);
-    restartAuto();
+    carousel = { refresh() { goTo(0, false); restartAuto(); } };
+    carousel.refresh();
   }
   initCarousel();
 
