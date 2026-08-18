@@ -866,7 +866,7 @@
       </div>
     </div>
 
-    <div class="carousel-container" onclick="openServicesSheet()">
+    <div class="carousel-container" onclick="onCarouselTap()">
       <div class="carousel-track" id="carousel-track"></div>
       <div class="carousel-dots" id="carousel-dots"></div>
     </div>
@@ -1289,6 +1289,9 @@
     { tipo: 'musica', titulo: 'Música en Vivo (Viernes)', desc: 'Reserva tu mesa cerca del escenario', wa: false }
   ];
   let RESERVA_SERVICIOS = {};
+  // Platos señalados por cada banner (config: b.plato). Si un banner no tiene
+  // plato, el toque cae en los servicios (comportamiento por defecto).
+  let BANNER_DISHES = [];
 
   function renderBanners() {
     const track = document.getElementById('carousel-track');
@@ -1303,7 +1306,21 @@
         ${b.desc ? `<div class="slide-desc">${b.desc}</div>` : ''}
       </div>`).join('');
     dotsEl.innerHTML = banners.map(() => '<div class="dot"></div>').join('');
+    BANNER_DISHES = banners.map(b => (b && b.plato) ? b.plato : null);
     if(carousel) carousel.refresh();
+  }
+
+  // Al tocar un banner: si señala un plato, abre su detalle para ordenarlo;
+  // si no, abre la hoja de servicios (banners por defecto de Rogasa).
+  function onCarouselTap() {
+    const idx = (carousel && carousel.getIndex) ? carousel.getIndex() : 0;
+    const plato = BANNER_DISHES[idx] || null;
+    if(plato) {
+      const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const dish = MENU.find(d => d && norm(d.name) === norm(plato));
+      if(dish) { openDishSheet(dish.id); return; }
+    }
+    openServicesSheet();
   }
 
   function renderServicios() {
@@ -1799,6 +1816,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.switchTab = switchTab;
   window.closeSheets = closeSheets;
   window.openServicesSheet = openServicesSheet;
+  window.onCarouselTap = onCarouselTap;
   window.openDishSheet = openDishSheet;
   window.addToCartFromSheet = addToCartFromSheet;
   window.openWhatsAppReserva = openWhatsAppReserva;
@@ -3444,7 +3462,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       }
     }, true);
 
-    carousel = { refresh() { goTo(0, false); restartAuto(); } };
+    carousel = { refresh() { goTo(0, false); restartAuto(); }, getIndex: () => idx };
     carousel.refresh();
   }
   initCarousel();
