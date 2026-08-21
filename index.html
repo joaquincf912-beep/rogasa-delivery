@@ -638,7 +638,13 @@
     .status-btn.active { background: var(--c-gold-dim); border-color: var(--c-gold); color: var(--c-gold); font-weight: 600; }
     .status-btn-full { grid-column: 1 / -1; }
 
-    .whatsapp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: 6px; background: var(--c-emerald-d); color: var(--c-emerald); border: 1px solid var(--c-emerald); font-size: 13px; font-weight: 500; }
+    .whatsapp-btn { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; padding: 12px; border-radius: 6px; background: var(--c-emerald-d); color: var(--c-emerald); border: 1px solid var(--c-emerald); font-size: 13px; font-weight: 500; }
+    .order-actions-row { display: flex; gap: 8px; }
+    .print-btn { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 12px; border-radius: 6px; background: rgba(245,197,24,0.1); color: var(--c-gold); border: 1px solid var(--c-gold); font-size: 13px; font-weight: 500; }
+    .print-btn:active { transform: scale(0.97); }
+    .kitchen-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; padding: 0 4px; }
+    .auto-print-btn { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-2); font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    .auto-print-btn.active { background: var(--c-gold); color: var(--c-bg); border-color: var(--c-gold); }
 
     /* TOGGLES */
     .settings-group { margin-bottom: 32px; }
@@ -980,6 +986,11 @@
     </div>
     
     <div id="cocina-content" style="display:none">
+      <div class="kitchen-toolbar">
+        <button id="auto-print-toggle" class="auto-print-btn" onclick="toggleAutoPrint()">
+          🖨️ Auto-Print: OFF
+        </button>
+      </div>
       <div id="orders-container">
         <!-- Injected via JS -->
       </div>
@@ -1068,7 +1079,7 @@
         <input type="text" id="ad-cfg-logo" placeholder="URL del logo (opcional, p. ej: https://...)">
         <div class="subtitle" style="margin-top:16px">Datos de Pago Móvil (los ve el cliente al pagar)</div>
         <input type="text" id="ad-cfg-pm-banco" placeholder="Banco (ej: Banco de Venezuela)">
-        <input type="tel" id="ad-cfg-pm-tel" placeholder="Teléfono (ej: 0414-5604660)">
+        <input type="tel" id="ad-cfg-pm-tel" placeholder="Teléfono (ej: 0422-5604660)">
         <input type="text" id="ad-cfg-pm-ced" placeholder="Cédula (ej: 10135036)">
         <button class="btn-primary" onclick="saveConfig()">Guardar Configuración</button>
       </div>
@@ -1268,7 +1279,7 @@
     horario: '',
     logo: '',
     pm_banco: 'Banco de Venezuela',
-    pm_telefono: '0414-5604660',
+    pm_telefono: '0422-5604660',
     pm_cedula: '10135036',
     banners: null,
     servicios: null
@@ -1831,6 +1842,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.setPayMethod = setPayMethod;
   window.copyPagoMovil = copyPagoMovil;
   window.checkPin = checkPin;
+  window.printReceipt = printReceipt;
+  window.toggleAutoPrint = toggleAutoPrint;
   window.saveTasa = saveTasa;
   window.toggleSoldOut = toggleSoldOut;
   window.toggleFavorite = toggleFavorite;
@@ -2341,7 +2354,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   function copyPagoMovil() {
     const monto = (document.getElementById('pm-monto')?.textContent || '').trim();
     const banco = CONFIG.pm_banco || 'Banco de Venezuela';
-    const tel = CONFIG.pm_telefono || '0414-5604660';
+    const tel = CONFIG.pm_telefono || '0422-5604660';
     const ced = CONFIG.pm_cedula || '10135036';
     const text = `Pago Movil — ${banco}\nMonto: ${monto}\nBanco: ${banco}\nTelefono: ${tel}\nCedula: ${ced}`;
     const done = () => showToast('📋 Datos de pago copiados', 'success');
@@ -2453,7 +2466,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           <div class="pm-fields">
             <div class="pm-field"><span class="pm-label">Monto</span><span class="pm-value pm-value-monto" id="pm-monto">${formatBs(totalConDelivery)}</span></div>
             <div class="pm-field"><span class="pm-label">Banco</span><span class="pm-value">${CONFIG.pm_banco || 'Banco de Venezuela'}</span></div>
-            <div class="pm-field"><span class="pm-label">Teléfono</span><span class="pm-value">${CONFIG.pm_telefono || '0414-5604660'}</span></div>
+            <div class="pm-field"><span class="pm-label">Teléfono</span><span class="pm-value">${CONFIG.pm_telefono || '0422-5604660'}</span></div>
             <div class="pm-field"><span class="pm-label">Cédula</span><span class="pm-value">${CONFIG.pm_cedula || '10135036'}</span></div>
           </div>
           <button class="btn-outline pm-copy-btn" onclick="copyPagoMovil()">
@@ -2535,7 +2548,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       }
       metodoLabel = 'Pago Móvil';
       payShort = `Pago Móvil (Ref: ${refN})`;
-      payMsg = `*Metodo de Pago:* Pago Movil\n*Banco:* ${CONFIG.pm_banco || 'Banco de Venezuela'}\n*Telefono:* ${CONFIG.pm_telefono || '0414-5604660'}\n*Cedula:* ${CONFIG.pm_cedula || '10135036'}\n*N° Referencia:* ${refN}\n`;
+      payMsg = `*Metodo de Pago:* Pago Movil\n*Banco:* ${CONFIG.pm_banco || 'Banco de Venezuela'}\n*Telefono:* ${CONFIG.pm_telefono || '0422-5604660'}\n*Cedula:* ${CONFIG.pm_cedula || '10135036'}\n*N° Referencia:* ${refN}\n`;
     } else {
       const moneda = (document.getElementById('pay-moneda')?.value || 'bs') === 'usd' ? 'Dólares ($)' : 'Bolívares (Bs.)';
       const billete = (document.getElementById('pay-billete')?.value || '').trim();
@@ -2694,10 +2707,16 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           <button class="status-btn ${p.estado==='reparto'?'active':''}" onclick="updateOrderStatus('${p.id}', 'reparto')">Reparto</button>
           <button class="status-btn status-btn-full ${p.estado==='entregado'?'active':''}" onclick="updateOrderStatus('${p.id}', 'entregado')">Entregado</button>
         </div>
-        <button class="whatsapp-btn" onclick="sendWhatsAppUpdate('${p.telefono}', '${p.id}', '${p.estado}')">
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-          Notificar Cliente
-        </button>
+        <div class="order-actions-row">
+          <button class="print-btn" onclick="printReceipt(state.adminOrders.find(o=>o.id==='${p.id}'))">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Imprimir
+          </button>
+          <button class="whatsapp-btn" onclick="sendWhatsAppUpdate('${p.telefono}', '${p.id}', '${p.estado}')">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            Notificar
+          </button>
+        </div>
       </div>
     `;
   }
@@ -2714,12 +2733,20 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       if(cocinaVisible) renderCocinaOrders();
       const adminVisible = document.getElementById('admin-content').style.display !== 'none';
       if(adminVisible) renderReportes();
+      // Auto-print: imprimir nuevos pedidos automáticamente
+      checkAutoPrintOrders(pedidos);
     });
   }
 
   function initCocina() {
     ensureAdminOrders();
     renderCocinaOrders();
+    // Sync auto-print toggle button state
+    const btn = document.getElementById('auto-print-toggle');
+    if(btn) {
+      btn.textContent = autoPrintEnabled ? '🖨️ Auto-Print: ON' : '🖨️ Auto-Print: OFF';
+      btn.classList.toggle('active', autoPrintEnabled);
+    }
   }
 
   function renderCocinaOrders() {
@@ -2908,6 +2935,86 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     repEstado = e;
     document.querySelectorAll('#rep-estado .chip').forEach(c => c.classList.toggle('active', c.dataset.estado === e));
     renderReportes();
+  }
+
+  // === AUTO-PRINT: Impresión automática de recibos ===
+  let autoPrintEnabled = localStorage.getItem('autoPrint') === 'true';
+  let printedOrderIds = JSON.parse(localStorage.getItem('printedOrderIds') || '[]');
+
+  function generateReceipt(p) {
+    const time = new Date(p.creado_en || p.creado_el || Date.now()).toLocaleString('es-VE', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const restaurantName = (CONFIG.nombre || 'Restaurante').toUpperCase();
+    const addr = CONFIG.direccion || '';
+    const phone = CONFIG.telefono || '';
+    let receipt = '';
+    receipt += `${'═'.repeat(32)}\n`;
+    receipt += `${restaurantName.center(32)}\n`;
+    receipt += `${addr.center(32)}\n`;
+    if(phone) receipt += `${phone.center(32)}\n`;
+    receipt += `${'═'.repeat(32)}\n`;
+    receipt += `PEDIDO: ${p.id}\n`;
+    receipt += `FECHA:  ${time}\n`;
+    receipt += `${'─'.repeat(32)}\n`;
+    receipt += `CLIENTE: ${p.cliente_nombre || ''}\n`;
+    receipt += `TEL:     ${p.telefono || ''}\n`;
+    receipt += `DIR:     ${p.ubicacion || ''}\n`;
+    receipt += `${'─'.repeat(32)}\n`;
+    receipt += `DETALLE:\n`;
+    (p.items || []).forEach(i => {
+      const qty = i.cantidad || i.q || 1;
+      const name = i.nombre || i.name || '';
+      receipt += `  ${qty}x ${name}\n`;
+    });
+    receipt += `${'─'.repeat(32)}\n`;
+    receipt += `PAGO: ${(p.metodo_pago || '').toUpperCase()}\n`;
+    receipt += `TOTAL: $${((p.total_usd || 0)).toFixed(2)} / Bs. ${((p.total_bs) || (p.total_usd || 0) * 45).toFixed(2)}\n`;
+    receipt += `${'═'.repeat(32)}\n`;
+    receipt += `${'¡Gracias!'.center(32)}\n`;
+    receipt += `${'═'.repeat(32)}\n`;
+    return receipt;
+  }
+
+  function printReceipt(p) {
+    const receipt = generateReceipt(p);
+    const win = window.open('', '_blank', 'width=320,height=500');
+    if(!win) { showToast('Permitir ventanas emergentes para imprimir'); return; }
+    win.document.write(`
+      <html><head><title>Pedido ${p.id}</title>
+      <style>
+        @page { size: 80mm auto; margin: 2mm; }
+        body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 8px; white-space: pre; line-height: 1.3; }
+        @media print { body { padding: 0; } }
+      </style></head><body><pre>${receipt}</pre>
+      <script>window.onload=function(){window.print();window.close();}<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
+  function checkAutoPrintOrders(pedidos) {
+    if(!autoPrintEnabled) return;
+    const newOrders = pedidos.filter(p => {
+      if(!p.restaurante ? TENANT !== 'rogasa' : p.restaurante !== TENANT) return false;
+      if(printedOrderIds.includes(p.id)) return false;
+      if(!p.estado || p.estado === 'entregado') return false;
+      return true;
+    });
+    newOrders.forEach(p => {
+      printedOrderIds.push(p.id);
+      localStorage.setItem('printedOrderIds', JSON.stringify(printedOrderIds));
+      printReceipt(p);
+    });
+  }
+
+  function toggleAutoPrint() {
+    autoPrintEnabled = !autoPrintEnabled;
+    localStorage.setItem('autoPrint', autoPrintEnabled);
+    const btn = document.getElementById('auto-print-toggle');
+    if(btn) {
+      btn.textContent = autoPrintEnabled ? '🖨️ Auto-Print: ON' : '🖨️ Auto-Print: OFF';
+      btn.classList.toggle('active', autoPrintEnabled);
+    }
+    showToast(autoPrintEnabled ? 'Auto-print activado — nuevos pedidos se imprimirán' : 'Auto-print desactivado');
   }
 
   function updateOrderStatus(id, status) {
