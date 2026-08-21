@@ -1634,9 +1634,7 @@
       if (notifAudioCtx && notifAudioCtx.state === 'suspended') notifAudioCtx.resume().catch(() => {});
     } catch (e) { /* sin audio si el navegador lo bloquea */ }
   }
-  document.addEventListener('pointerdown', unlockNotifAudio);
-  document.addEventListener('touchstart', unlockNotifAudio);
-  document.addEventListener('keydown', unlockNotifAudio);
+  // Sound only plays in tracking and kitchen views (no auto-unlock on entry)
 
   function playNotifTone() {
     if (!notifAudioCtx || notifAudioCtx.state !== 'running') return;
@@ -2608,8 +2606,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     //    (un await antes de window.open ralentiza la transición y puede disparar el bloqueador de popups)
     window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
 
-    // Sonido de confirmación: dentro del gesto del click (audio garantizado)
-    try { unlockNotifAudio(); playNotifSound(); } catch (e) {}
+    // Sound removed from checkout - only plays in tracking and kitchen
 
     // Notificaciones push: pedir permiso y registrar el token en el pedido (en segundo plano)
     ensureFCM(pedido.id);
