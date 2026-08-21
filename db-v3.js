@@ -87,18 +87,42 @@ export const db = {
     },
 
     async crearPedido({ id, restaurante, cliente_nombre, ubicacion, telefono, metodo_pago, total_usd, total_bs, items }) {
+        // === SERVER-SIDE VALIDATION ===
+        if (!cliente_nombre || cliente_nombre.length < 2 || cliente_nombre.length > 100) {
+            throw new Error('Nombre inválido');
+        }
+        if (!telefono || !/^[0-9]{10,15}$/.test(telefono.replace(/[\s\-\(\)]/g, ''))) {
+            throw new Error('Teléfono inválido');
+        }
+        if (!ubicacion || ubicacion.length < 5) {
+            throw new Error('Dirección inválida');
+        }
+        if (!items || items.length === 0 || items.length > 20) {
+            throw new Error('Items inválidos (1-20 platos)');
+        }
+        if (total_usd <= 0 || total_usd > 1000) {
+            throw new Error('Total inválido');
+        }
+
         const nuevoPedido = {
             id: id || this.generarIdUnico(),
             restaurante: restaurante || 'rogasa',
-            cliente_nombre,
-            ubicacion,
-            telefono,
+            cliente_nombre: cliente_nombre.trim().substring(0, 100),
+            ubicacion: ubicacion.trim().substring(0, 500),
+            telefono: telefono.replace(/[\s\-\(\)]/g, '').substring(0, 15),
             metodo_pago,
-            total_usd,
-            total_bs,
-            items,
+            total_usd: parseFloat(total_usd.toFixed(2)),
+            total_bs: parseFloat(total_bs.toFixed(2)),
+            items: items.map(item => ({
+                id: item.id,
+                nombre: (item.nombre || '').trim().substring(0, 100),
+                cantidad: Math.min(Math.max(1, parseInt(item.cantidad) || 1), 20),
+                precio: parseFloat((item.precio || 0).toFixed(2))
+            })),
             estado: 'recibido',
-            creado_en: new Date().toISOString()
+            creado_en: new Date().toISOString(),
+            // Security: server timestamp for ordering
+            server_timestamp: Date.now()
         };
 
         if (!database) {
@@ -110,6 +134,7 @@ export const db = {
             await database.ref('orders/' + nuevoPedido.id).set(nuevoPedido);
         } catch (e) {
             console.error('Firebase write error:', e);
+            throw e;
         }
 
         return nuevoPedido;

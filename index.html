@@ -23,6 +23,7 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <script defer src="./scripts/security.js"></script>
   <style>
     :root {
       --c-bg: #08080a;
@@ -1534,7 +1535,13 @@
     unsubscribeAdmin: null,
     fcmToken: null,
     fcmEnabled: false,
-    pendingOrderId: null
+    pendingOrderId: null,
+    // Security: client fingerprint for flood protection
+    clientFingerprint: localStorage.getItem('client_fingerprint') || (() => {
+      const fp = 'fp_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('client_fingerprint', fp);
+      return fp;
+    })()
   };
 
   // === NOTIFICACIONES PUSH ===
@@ -2522,14 +2529,42 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   }
 
   function checkout() {
-    const name = document.getElementById('c-name')?.value;
+    // === SECURITY CHECKS ===
+    if (typeof Security !== 'undefined') {
+      // Rate limit: max 5 orders per 15 minutes
+      const rateCheck = Security.checkRateLimit('orders');
+      if (!rateCheck.allowed) {
+        showToast(`Demasiados pedidos. Espera ${rateCheck.retryAfter} segundos.`, 'error');
+        return;
+      }
+
+      // Flood protection: 30 seconds between orders
+      const floodCheck = Security.checkOrderFlood(state.clientFingerprint || 'default');
+      if (!floodCheck.allowed) {
+        showToast(`Espera ${floodCheck.waitSeconds} segundos entre pedidos.`, 'error');
+        return;
+      }
+    }
+
+    const name = Security ? Security.sanitizeInput(document.getElementById('c-name')?.value) : document.getElementById('c-name')?.value;
     const phone = document.getElementById('c-phone')?.value;
-    const sector = document.getElementById('c-sector')?.value;
-    const ref = document.getElementById('c-ref')?.value;
+    const sector = Security ? Security.sanitizeInput(document.getElementById('c-sector')?.value) : document.getElementById('c-sector')?.value;
+    const ref = Security ? Security.sanitizeInput(document.getElementById('c-ref')?.value) : document.getElementById('c-ref')?.value;
     
     if(!name || !phone || !sector) {
       showToast('Por favor completa nombre, teléfono y barrio.');
       markInvalidFields(['c-name','c-phone','c-sector']);
+      return;
+    }
+
+    // Enhanced validation
+    if (Security && !Security.validateName(name)) {
+      showToast('Nombre inválido (2-100 caracteres).', 'error');
+      return;
+    }
+
+    if (Security && !Security.validatePhone(phone)) {
+      showToast('Teléfono inválido (10-15 dígitos).', 'error');
       return;
     }
 
