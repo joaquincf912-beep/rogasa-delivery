@@ -1015,31 +1015,27 @@
           <button class="btn-outline" style="width:auto;display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 22px" onclick="saveTasa()">Guardar</button>
         </div>
       </div>
+
+      <div class="settings-group" style="background: linear-gradient(145deg, #2a1f0e 0%, #1a1408 100%); border: 1px solid rgba(245,197,24,0.3); border-radius: 16px; padding: 20px; margin-bottom: 4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="font-size:36px;line-height:1">🍳</div>
+            <div>
+              <div style="font-size:18px;font-weight:700;color:var(--c-gold);letter-spacing:0.3px">Desayunos</div>
+              <div id="desayuno-status-text" style="font-size:13px;margin-top:3px;color:var(--c-gold)">Abierto — visible en el menú</div>
+            </div>
+          </div>
+          <label class="toggle" style="width:62px;height:34px;flex-shrink:0">
+            <input type="checkbox" id="toggle-desayunos" checked onchange="toggleCategory('Desayunos', !this.checked)">
+            <span class="slider" style="border-radius:17px"></span>
+          </label>
+        </div>
+      </div>
       
       <div class="settings-group">
         <div class="section-title">Disponibilidad de Platos</div>
         <div class="subtitle" style="margin-bottom:12px">Apaga para marcar como agotado</div>
         <div id="settings-disponibilidad"></div>
-      </div>
-
-      <div class="settings-group" style="background: linear-gradient(135deg, #2a1f0e 0%, #1a1408 100%); border: 1px solid rgba(245,197,24,0.25); border-radius: 16px; padding: 20px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-          <div style="font-size:28px">🍳</div>
-          <div>
-            <div class="section-title" style="margin-bottom:2px;color:var(--c-gold)">Desayunos</div>
-            <div class="subtitle" style="margin-bottom:0">Activa o cierra la venta de desayunos</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding:14px 16px;background:rgba(0,0,0,0.3);border-radius:12px">
-          <div>
-            <div style="font-size:15px;font-weight:600;color:var(--c-text)">Venta de Desayunos</div>
-            <div id="desayuno-status-text" style="font-size:12px;margin-top:4px;color:var(--c-gold)">Abierto — visible en el menú</div>
-          </div>
-          <label class="toggle" style="width:56px;height:30px">
-            <input type="checkbox" id="toggle-desayunos" checked onchange="toggleCategory('Desayunos', !this.checked)">
-            <span class="slider" style="border-radius:15px"></span>
-          </label>
-        </div>
       </div>
       
       <div class="settings-group">
