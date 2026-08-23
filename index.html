@@ -1021,6 +1021,12 @@
         <div class="subtitle" style="margin-bottom:12px">Apaga para marcar como agotado</div>
         <div id="settings-disponibilidad"></div>
       </div>
+
+      <div class="settings-group">
+        <div class="section-title">Control de Menú</div>
+        <div class="subtitle" style="margin-bottom:12px">Bloquea categorías completas (ej: Desayunos fuera de horario)</div>
+        <div id="settings-category-toggles"></div>
+      </div>
       
       <div class="settings-group">
         <div class="section-title">Favoritos de la Semana</div>
@@ -1283,7 +1289,8 @@
     pm_telefono: '0422-5604660',
     pm_cedula: '10135036',
     banners: null,
-    servicios: null
+    servicios: null,
+    blockedCategories: []
   };
 
   // Banners por defecto (Rogasa). Cada restaurante puede publicar los suyos
@@ -1918,6 +1925,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         if (Array.isArray(data.config.soldOut)) {
           state.soldOut = data.config.soldOut;
         }
+        if (Array.isArray(data.config.blockedCategories)) {
+          CONFIG.blockedCategories = data.config.blockedCategories;
+        }
       }
       if (data && Array.isArray(data.promos)) {
         PROMOS = data.promos;
@@ -2061,8 +2071,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   // Categorías dinámicas por restaurante: se derivan del menú del tenant
   // (Colesterol verá Hamburguesas/Perros/Papas..., Rogasa sus categorías).
   function tenantCategories() {
+    const blocked = (CONFIG.blockedCategories || []).map(c => c.toLowerCase());
     const cats = Array.from(new Set(MENU.map(d => d.cat).filter(Boolean)))
-      .map(c => c.charAt(0).toUpperCase() + c.slice(1));
+      .map(c => c.charAt(0).toUpperCase() + c.slice(1))
+      .filter(c => !blocked.includes(c.toLowerCase()));
     return ['Todo', ...cats];
   }
   function renderCategories() {
@@ -2102,8 +2114,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   function renderMenu() {
     state.searchQuery = $('search-input').value.toLowerCase();
     const cont = $('menu-container');
+    const blocked = (CONFIG.blockedCategories || []).map(c => c.toLowerCase());
     
-    let filtered = MENU;
+    let filtered = MENU.filter(d => !blocked.includes((d.cat || '').toLowerCase()));
     if (state.activeCategory !== 'Todo') {
       filtered = filtered.filter(d => d.cat.toLowerCase() === state.activeCategory.toLowerCase());
     }
@@ -3444,6 +3457,25 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         </label>
       </div>
     `).join('');
+
+    // Control de Categorías
+    const catCont = $('settings-category-toggles');
+    const allCats = Array.from(new Set(MENU.map(d => d.cat).filter(Boolean)));
+    const blocked = CONFIG.blockedCategories || [];
+    catCont.innerHTML = allCats.map(cat => {
+      const isBlocked = blocked.map(c => c.toLowerCase()).includes(cat.toLowerCase());
+      return `
+      <div class="settings-item">
+        <div class="settings-item-info">
+          <div class="settings-item-name">${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>
+          <div class="settings-item-cat">${MENU.filter(d => d.cat === cat).length} platos</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${!isBlocked ? 'checked' : ''} onchange="toggleCategory('${cat}', !this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>`;
+    }).join('');
   }
 
   function saveTasa() {
@@ -3478,6 +3510,23 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     localStorage.setItem('weekly_favorites', JSON.stringify(state.favorites));
     renderFavorites();
   }
+
+  function toggleCategory(cat, blocked) {
+    if (!CONFIG.blockedCategories) CONFIG.blockedCategories = [];
+    if (blocked) {
+      if (!CONFIG.blockedCategories.map(c => c.toLowerCase()).includes(cat.toLowerCase())) {
+        CONFIG.blockedCategories.push(cat);
+      }
+    } else {
+      CONFIG.blockedCategories = CONFIG.blockedCategories.filter(c => c.toLowerCase() !== cat.toLowerCase());
+    }
+    db.guardarConfig(TENANT, { ...CONFIG, soldOut: state.soldOut });
+    renderMenu();
+    renderCategories();
+    renderFavorites();
+    showToast(blocked ? `Categoría "${cat}" bloqueada` : `Categoría "${cat}" activada`, 'success');
+  }
+  window.toggleCategory = toggleCategory;
 
   // CARRUSEL: auto-avance + deslizamiento táctil y con ratón.
   // Soporta banners dinámicos por restaurante (carousel.refresh() re-ancora
