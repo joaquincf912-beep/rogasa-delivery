@@ -2529,23 +2529,6 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   }
 
   function checkout() {
-    // === SECURITY CHECKS ===
-    if (typeof Security !== 'undefined') {
-      // Rate limit: max 5 orders per 15 minutes
-      const rateCheck = Security.checkRateLimit('orders');
-      if (!rateCheck.allowed) {
-        showToast(`Demasiados pedidos. Espera ${rateCheck.retryAfter} segundos.`, 'error');
-        return;
-      }
-
-      // Flood protection: 30 seconds between orders
-      const floodCheck = Security.checkOrderFlood(state.clientFingerprint || 'default');
-      if (!floodCheck.allowed) {
-        showToast(`Espera ${floodCheck.waitSeconds} segundos entre pedidos.`, 'error');
-        return;
-      }
-    }
-
     const name = Security ? Security.sanitizeInput(document.getElementById('c-name')?.value) : document.getElementById('c-name')?.value;
     const phone = document.getElementById('c-phone')?.value;
     const sector = Security ? Security.sanitizeInput(document.getElementById('c-sector')?.value) : document.getElementById('c-sector')?.value;

@@ -93,30 +93,6 @@ const Security = (() => {
     return { valid: errors.length === 0, errors };
   }
 
-  // === ORDER FLOOD PROTECTION ===
-  const recentOrders = new Map(); // ip/orderId -> timestamp
-
-  function checkOrderFlood(identifier) {
-    const now = Date.now();
-    const lastOrder = recentOrders.get(identifier);
-    
-    if (lastOrder && (now - lastOrder) < 30000) { // 30 segundos entre pedidos
-      return { allowed: false, waitSeconds: Math.ceil((30000 - (now - lastOrder)) / 1000) };
-    }
-
-    recentOrders.set(identifier, now);
-    
-    // Clean old entries every 100 checks
-    if (recentOrders.size > 100) {
-      const cutoff = now - 300000; // 5 minutes
-      for (const [key, timestamp] of recentOrders) {
-        if (timestamp < cutoff) recentOrders.delete(key);
-      }
-    }
-
-    return { allowed: true };
-  }
-
   // === PERFORMANCE OPTIMIZATION ===
   const cache = new Map();
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -176,7 +152,6 @@ const Security = (() => {
     validatePhone,
     validateName,
     validateOrder,
-    checkOrderFlood,
     getCached,
     setCache,
     canMakeConnection,
