@@ -279,5 +279,18 @@ export const db = {
     // === FCM ===
     initFCM: fcmInit,
     actualizarToken: fcmActualizarToken,
-    fcmEnabled: () => fcmEnabled
+    fcmEnabled: () => fcmEnabled,
+
+    // Actualizar un pedido completo
+    async actualizarPedido(id, updates) {
+        if (!database || !id) return null;
+        try {
+            await database.ref('orders/' + id).update(updates);
+            const snapshot = await database.ref('orders/' + id).get();
+            return snapshot.exists() ? snapshot.val() : null;
+        } catch (e) {
+            console.error('Firebase update error (pedido):', e);
+            return null;
+        }
+    }
 };
