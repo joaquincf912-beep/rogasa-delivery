@@ -2736,52 +2736,62 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       creado_en: new Date().toISOString()
     };
 
-    // GPS: usar ubicacion ya capturada o solicitar nueva
-    const gpsPromise = state.gps ? Promise.resolve(state.gps) : requestGPS();
+    // GPS: usar ubicacion ya capturada
+    const gps = state.gps || null;
+    if (gps) {
+      pedido.gps_lat = gps.lat;
+      pedido.gps_lng = gps.lng;
+    }
 
-    // Abrir WhatsApp rapido + GPS en background
-    const openWa = (gps) => {
-      const trackUrl = trackUrlFor(pedido.id);
-      let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `*Pedido:* ${pedido.id}\n`;
-      msg += `*Cliente:* ${name}\n`;
-      msg += `*Telefono:* ${phone}\n`;
-      msg += `*Direccion:* ${sector}${ref ? ' — ' + ref : ''}\n`;
-      if (gps) {
-        msg += `*Ubicacion GPS:* https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
-      }
-      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `*Detalle del Pedido:*\n\n`;
-      cartItems.forEach(i => {
-        const lineUsd = (i.price * i.q).toFixed(2);
-        const lineBs = (i.price * i.q * state.tasa).toFixed(2);
-        msg += `  ${i.q}x ${i.name}\n`;
-        msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
-      });
-      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      const subtotalUsd = totalUsd - CONFIG.delivery;
-      msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
-      msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
-      msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
-      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      msg += `${payMsg}`;
-      msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
-      msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
-      msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
-      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
-    };
-
-    // Intentar GPS con timeout corto; si no resuelve a tiempo, abrir sin GPS
-    const gpsTimeout = new Promise(r => setTimeout(() => r(null), 3000));
-    Promise.race([gpsPromise, gpsTimeout]).then(gps => {
-      if (gps) {
-        pedido.gps_lat = gps.lat;
-        pedido.gps_lng = gps.lng;
-      }
-      openWa(gps);
-      ensureFCM(pedido.id);
+    // Construir mensaje WhatsApp INMEDIATO (sin esperar nada)
+    const trackUrl = trackUrlFor(pedido.id);
+    let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Pedido:* ${pedido.id}\n`;
+    msg += `*Cliente:* ${name}\n`;
+    msg += `*Telefono:* ${phone}\n`;
+    msg += `*Direccion:* ${sector}${ref ? ' — ' + ref : ''}\n`;
+    if (gps) {
+      msg += `*Ubicacion GPS:* https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
+    }
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Detalle del Pedido:*\n\n`;
+    cartItems.forEach(i => {
+      const lineUsd = (i.price * i.q).toFixed(2);
+      const lineBs = (i.price * i.q * state.tasa).toFixed(2);
+      msg += `  ${i.q}x ${i.name}\n`;
+      msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
     });
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    const subtotalUsd = totalUsd - CONFIG.delivery;
+    msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
+    msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
+    msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `${payMsg}`;
+    msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
+    msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
+    msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
+
+    // Abrir WhatsApp INMEDIATO — sin esperar GPS ni Firebase
+    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+
+    // GPS en background: si no tenemos GPS, intentar capturar y actualizar Firebase
+    if (!gps && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          state.gps = { lat, lng };
+          pedido.gps_lat = lat;
+          pedido.gps_lng = lng;
+          // Actualizar el pedido en Firebase con GPS
+          db.crearPedido(pedido).catch(() => {});
+        }, () => {},
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+
+    ensureFCM(pedido.id);
 
     // 2) Pasar al seguimiento al instante
     state.cart = [];
