@@ -2790,7 +2790,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   // KITCHEN ADMIN
   function checkPin(view) {
     const val = document.getElementById(`${view}-pin`).value;
-    if(val === '1234') {
+    if(val === '2828') {
       document.getElementById(`${view}-auth`).style.display = 'none';
       document.getElementById(`${view}-content`).style.display = 'block';
       document.getElementById(`${view}-pin`).value = '';
@@ -3243,6 +3243,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
     msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
     let cleanPhone = phone.replace(/\D/g, '');
+    // Si empieza con 0 (formato local), reemplazar por código de país 58
+    if(cleanPhone.startsWith('0')) cleanPhone = '58' + cleanPhone.substring(1);
+    // Si no tiene código de país, asumir Venezuela (58)
+    if(cleanPhone.length === 10) cleanPhone = '58' + cleanPhone;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
