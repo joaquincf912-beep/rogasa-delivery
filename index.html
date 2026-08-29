@@ -1279,6 +1279,20 @@
     </div>
   </div>
 
+  <!-- GPS Permission Sheet -->
+  <div class="bottom-sheet" id="sheet-gps-perm" style="text-align:center;">
+    <div class="sheet-handle"></div>
+    <div class="sheet-content" style="padding-top:30px;padding-bottom:30px;">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--c-gold-dim);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px;color:var(--c-gold);"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div style="font-size:20px;font-family:var(--font-serif);font-weight:700;color:var(--c-text);margin-bottom:8px;">Ubicacion en Tiempo Real</div>
+      <div style="font-size:14px;color:var(--c-text-2);line-height:1.5;margin-bottom:24px;">Para enviar tu direccion exacta al restaurante cuando hagas un pedido, necesitamos acceder a tu ubicacion GPS.</div>
+      <button id="gps-allow-btn" class="btn-primary" style="margin-bottom:12px;">Permitir Ubicacion</button>
+      <button id="gps-deny-btn" class="btn-outline" onclick="denyGPS()">Ahora No</button>
+    </div>
+  </div>
+
   <!-- Admin Promo Editor Sheet -->
   <div class="bottom-sheet" id="sheet-promo">
     <div class="sheet-handle"></div>
@@ -2001,6 +2015,38 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   }
   loadTenantData();
 
+  // === GPS PERMISSION ON LOAD ===
+  function showGPSPermission() {
+    if (localStorage.getItem('gps_permission_asked')) return;
+    setTimeout(() => {
+      document.getElementById('sheet-overlay').classList.add('active');
+      document.getElementById('sheet-gps-perm').classList.add('active');
+    }, 800);
+  }
+  function allowGPS() {
+    localStorage.setItem('gps_permission_asked', 'granted');
+    closeSheets();
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          state.gps = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          showToast('Ubicacion activada correctamente', 'success');
+        },
+        () => { showToast('No se pudo obtener la ubicacion', 'error'); },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+  }
+  function denyGPS() {
+    localStorage.setItem('gps_permission_asked', 'denied');
+    closeSheets();
+    showToast('Sin ubicacion GPS — puedes pedirla al hacer tu pedido');
+  }
+  window.allowGPS = allowGPS;
+  window.denyGPS = denyGPS;
+  document.getElementById('gps-allow-btn').addEventListener('click', allowGPS);
+  showGPSPermission();
+
   // NAVIGATION
   function switchTab(tabId) {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -2690,8 +2736,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       creado_en: new Date().toISOString()
     };
 
-    // GPS: capturar ubicacion en segundo plano
-    const gpsPromise = requestGPS();
+    // GPS: usar ubicacion ya capturada o solicitar nueva
+    const gpsPromise = state.gps ? Promise.resolve(state.gps) : requestGPS();
 
     // Abrir WhatsApp rapido + GPS en background
     const openWa = (gps) => {
