@@ -1028,10 +1028,11 @@
     <div id="ajustes-content" style="display:none">
       <div class="settings-group">
         <div class="section-title">Tasa de Cambio (Bs/USD)</div>
-        <div style="display:flex;gap:12px">
+        <div style="display:flex;gap:12px;margin-bottom:8px;">
           <input type="number" id="tasa-input" step="0.01">
           <button class="btn-outline" style="width:auto;display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 22px" onclick="saveTasa()">Guardar</button>
         </div>
+        <button onclick="fetchTasaBCV()" style="width:100%;padding:12px;border-radius:8px;background:var(--c-emerald-d);color:var(--c-emerald);border:1px solid var(--c-emerald);font-size:13px;font-weight:600;cursor:pointer;">Actualizar desde BCV oficial</button>
       </div>
 
       <div class="settings-group" style="padding:0;overflow:hidden;border-radius:16px">
@@ -1259,6 +1260,22 @@
         <button class="btn-outline" onclick="closeAdminEditor()">Cancelar</button>
         <button class="btn-primary" onclick="saveDish()">Guardar Plato</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Order Detail Sheet -->
+  <div class="bottom-sheet" id="sheet-order-detail">
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeSheets()" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="sheet-content">
+      <div id="od-header"></div>
+      <div id="od-items" style="background:var(--c-surface-2);border-radius:12px;padding:14px;margin:14px 0;"></div>
+      <div id="od-payment" style="background:var(--c-surface-2);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+      <div id="od-gps" style="display:none;background:var(--c-surface-2);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+      <div id="od-queue" style="display:none;background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border:2px solid var(--c-gold);border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;"></div>
+      <button class="btn-outline" onclick="closeSheets()" style="width:100%">Cerrar</button>
     </div>
   </div>
 
@@ -1972,6 +1989,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       renderBanners();
       renderServicios();
       renderPromos();
+      // Auto-fetch BCV rate after loading tenant data
+      fetchTasaBCV();
       renderMenu();
       renderFavorites();
       renderCategories();
@@ -2671,40 +2690,52 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       creado_en: new Date().toISOString()
     };
 
-    const trackUrl = trackUrlFor(pedido.id);
-    let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `*Pedido:* ${pedido.id}\n`;
-    msg += `*Cliente:* ${name}\n`;
-    msg += `*Telefono:* ${phone}\n`;
-    msg += `*Direccion:* ${sector}${ref ? ' — ' + ref : ''}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `*Detalle del Pedido:*\n\n`;
-    cartItems.forEach(i => {
-      const lineUsd = (i.price * i.q).toFixed(2);
-      const lineBs = (i.price * i.q * state.tasa).toFixed(2);
-      msg += `  ${i.q}x ${i.name}\n`;
-      msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
+    // GPS: capturar ubicacion en segundo plano
+    const gpsPromise = requestGPS();
+
+    // Abrir WhatsApp rapido + GPS en background
+    const openWa = (gps) => {
+      const trackUrl = trackUrlFor(pedido.id);
+      let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `*Pedido:* ${pedido.id}\n`;
+      msg += `*Cliente:* ${name}\n`;
+      msg += `*Telefono:* ${phone}\n`;
+      msg += `*Direccion:* ${sector}${ref ? ' — ' + ref : ''}\n`;
+      if (gps) {
+        msg += `*Ubicacion GPS:* https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
+      }
+      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `*Detalle del Pedido:*\n\n`;
+      cartItems.forEach(i => {
+        const lineUsd = (i.price * i.q).toFixed(2);
+        const lineBs = (i.price * i.q * state.tasa).toFixed(2);
+        msg += `  ${i.q}x ${i.name}\n`;
+        msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
+      });
+      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      const subtotalUsd = totalUsd - CONFIG.delivery;
+      msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
+      msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
+      msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
+      msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      msg += `${payMsg}`;
+      msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
+      msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
+      msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
+      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+
+    // Intentar GPS con timeout corto; si no resuelve a tiempo, abrir sin GPS
+    const gpsTimeout = new Promise(r => setTimeout(() => r(null), 3000));
+    Promise.race([gpsPromise, gpsTimeout]).then(gps => {
+      if (gps) {
+        pedido.gps_lat = gps.lat;
+        pedido.gps_lng = gps.lng;
+      }
+      openWa(gps);
+      ensureFCM(pedido.id);
     });
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    const subtotalUsd = totalUsd - CONFIG.delivery;
-    msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
-    msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
-    msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `${payMsg}`;
-    msg += `*Tasa del dia:* Bs. ${state.tasa.toFixed(2)} / $1\n\n`;
-    msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
-    msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
-
-    // 1) Abrir WhatsApp INMEDIATO: sin esperar Firebase, dentro del gesto del click
-    //    (un await antes de window.open ralentiza la transición y puede disparar el bloqueador de popups)
-    window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
-
-    // Sound removed from checkout - only plays in tracking and kitchen
-
-    // Notificaciones push: pedir permiso y registrar el token en el pedido (en segundo plano)
-    ensureFCM(pedido.id);
 
     // 2) Pasar al seguimiento al instante
     state.cart = [];
@@ -2828,6 +2859,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           Tel: ${p.telefono}<br>
           Dir: ${p.ubicacion}<br>
           ${(p.metodo_pago || '').toUpperCase()} - $${((p.total_usd || 0)).toFixed(2)} / Bs. ${((p.total_bs) || (p.total_usd || 0) * 45).toFixed(2)}
+          ${p.gps_lat && p.gps_lng ? `<br><a href="https://www.google.com/maps?q=${p.gps_lat},${p.gps_lng}" target="_blank" style="color:var(--c-emerald);font-weight:600;">Ver ubicacion GPS</a>` : ''}
         </div>
         <div class="order-items">
           ${(p.items || []).map(i => `<div class="order-item"><span class="order-item-q">${i.cantidad || i.q || 1}x</span><span>${i.nombre || i.name}</span></div>`).join('')}
@@ -3076,7 +3108,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         ((p.items || []).length > 3 ? ` +${(p.items || []).length - 3} más` : '');
       const estado = REP_ESTADO_LABEL[p.estado] || p.estado || '—';
       return `
-        <div class="rep-row">
+        <div class="rep-row" onclick="showOrderDetail('${p.id}')" style="cursor:pointer;">
           <div class="rep-row-info">
             <div class="rep-row-id">${p.id} · ${fecha}</div>
             <div class="rep-row-meta">${resumen}${resumen ? ' — ' : ''}${p.cliente_nombre || ''}</div>
@@ -3234,12 +3266,17 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       reparto: 'En Camino — El repartidor se dirige a tu ubicacion',
       entregado: 'Entregado — Tu pedido ha sido entregado'
     };
+    // Buscar GPS del pedido si existe
+    const orderData = (state.adminOrders || []).find(o => o.id === id);
     const trackUrl = trackUrlFor(id);
     let msg = `*${CONFIG.nombre.toUpperCase()}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `*Actualizacion de Pedido*\n\n`;
     msg += `*Pedido:* ${id}\n`;
     msg += `*Estado:* ${statusLabels[status] || status}\n\n`;
+    if (orderData && orderData.gps_lat && orderData.gps_lng) {
+      msg += `*Ubicacion GPS:* https://www.google.com/maps?q=${orderData.gps_lat},${orderData.gps_lng}\n\n`;
+    }
     msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
     msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
     let cleanPhone = phone.replace(/\D/g, '');
@@ -3698,6 +3735,133 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     showToast(blocked ? `"${cat}" cerrado` : `"${cat}" activado`, 'success');
   }
   window.toggleCategory = toggleCategory;
+
+  // === DETALLE DE PEDIDO (Historial) ===
+  function showOrderDetail(orderId) {
+    const pedidos = state.adminOrders || [];
+    const p = pedidos.find(o => o.id === orderId);
+    if (!p) {
+      showToast('Pedido no encontrado', 'error');
+      return;
+    }
+    const ts = p.creado_en || p.creado_el;
+    const d = new Date(ts);
+    const fecha = isNaN(d) ? '—' : d.toLocaleDateString('es-VE', { day:'2-digit', month:'long', year:'numeric' }) + ' · ' + d.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+    const estadoLabels = {recibido:'Recibido',pago_confirmado:'Pago Confirmado',cocina:'En Cocina',reparto:'En Reparto',entregado:'Entregado',cancelado:'Cancelado'};
+    const estadoLabel = estadoLabels[p.estado] || p.estado || '—';
+    const estadoColor = {recibido:'var(--c-warn)',pago_confirmado:'var(--c-gold)',cocina:'var(--c-emerald)',reparto:'var(--c-rose)',entregado:'var(--c-text-2)'};
+    const ec = estadoColor[p.estado] || 'var(--c-text-2)';
+    // Header
+    document.getElementById('od-header').innerHTML = `
+      <div style="font-size:22px;font-family:var(--font-serif);font-weight:700;color:var(--c-gold);margin-bottom:4px;">Pedido #${p.id}</div>
+      <div style="font-size:13px;color:var(--c-text-2);margin-bottom:12px;">${fecha}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <span style="background:${ec};color:var(--c-bg);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;">${estadoLabel}</span>
+        ${p.queue_number ? `<span style="background:linear-gradient(135deg,#FF9800,#F44336);color:#fff;font-size:13px;font-weight:700;padding:4px 12px;border-radius:20px;">Cola #${p.queue_number}</span>` : ''}
+      </div>
+      <div style="background:var(--c-surface-2);border-radius:12px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:var(--c-text-2);">Cliente</span><span style="font-size:14px;font-weight:600;">${p.cliente_nombre || '—'}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:var(--c-text-2);">Telefono</span><span style="font-size:14px;">${p.telefono || '—'}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--c-text-2);">Direccion</span><span style="font-size:14px;text-align:right;max-width:60%;">${p.ubicacion || '—'}</span></div>
+      </div>`;
+    // Items
+    const itemsHtml = (p.items || []).map(i => {
+      const name = i.nombre || i.name || '';
+      const qty = i.cantidad || i.q || 1;
+      const price = i.precio || i.price || 0;
+      const totalLine = (qty * price).toFixed(2);
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border);"><span style="font-size:14px;"><span style="color:var(--c-gold);font-weight:600;">${qty}x</span> ${name}</span><span style="font-size:14px;font-weight:500;">$${totalLine}</span></div>`;
+    }).join('');
+    const sub = (p.total_usd || 0) - (CONFIG.delivery || 0);
+    document.getElementById('od-items').innerHTML = `
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--c-text-2);text-transform:uppercase;letter-spacing:0.05em;">Detalle del Pedido</div>
+      ${itemsHtml}
+      <div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:6px;border-top:1px solid var(--c-border-h);">
+        <span style="font-size:12px;color:var(--c-text-2);">Subtotal</span><span style="font-size:13px;">$${sub.toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:12px;color:var(--c-text-2);">Delivery</span><span style="font-size:13px;">$${(CONFIG.delivery || 0).toFixed(2)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:2px solid var(--c-border-h);">
+        <span style="font-size:16px;font-weight:700;">TOTAL</span>
+        <span style="font-size:18px;font-weight:700;color:var(--c-gold);">$${(p.total_usd || 0).toFixed(2)} <span style="font-size:12px;color:var(--c-text-2);font-weight:400;">Bs. ${(p.total_bs || (p.total_usd||0) * (state.tasa || 45)).toFixed(2)}</span></span>
+      </div>`;
+    // Payment
+    const payLabel = (p.metodo_pago || 'Efectivo').toUpperCase();
+    document.getElementById('od-payment').innerHTML = `
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--c-text-2);text-transform:uppercase;letter-spacing:0.05em;">Metodo de Pago</div>
+      <div style="font-size:15px;font-weight:600;">${payLabel}</div>
+      <div style="font-size:12px;color:var(--c-text-2);margin-top:4px;">Tasa: Bs. ${(state.tasa || 45).toFixed(2)} / $1</div>`;
+    // GPS
+    const gpsEl = document.getElementById('od-gps');
+    if (p.gps_lat && p.gps_lng) {
+      const mapUrl = `https://www.google.com/maps?q=${p.gps_lat},${p.gps_lng}`;
+      gpsEl.style.display = 'block';
+      gpsEl.innerHTML = `
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--c-text-2);text-transform:uppercase;letter-spacing:0.05em;">Ubicacion GPS</div>
+        <div style="font-size:13px;margin-bottom:8px;">Lat: ${p.gps_lat.toFixed(6)}, Lng: ${p.gps_lng.toFixed(6)}</div>
+        <a href="${mapUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:8px;background:var(--c-emerald-d);color:var(--c-emerald);border:1px solid var(--c-emerald);font-size:13px;font-weight:600;text-decoration:none;">Ver en Google Maps</a>`;
+    } else {
+      gpsEl.style.display = 'none';
+    }
+    // Queue
+    const qEl = document.getElementById('od-queue');
+    if (p.queue_number) {
+      qEl.style.display = 'block';
+      qEl.innerHTML = `
+        <div style="font-size:12px;color:#888;margin-bottom:6px;">Posicion en la cola</div>
+        <div style="font-size:48px;font-weight:800;color:var(--c-gold);line-height:1;">#${p.queue_number}</div>`;
+    } else {
+      qEl.style.display = 'none';
+    }
+    // Show sheet
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-order-detail').classList.add('active');
+  }
+  window.showOrderDetail = showOrderDetail;
+
+  // === GPS EN TIEMPO REAL ===
+  function requestGPS() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    });
+  }
+  window.requestGPS = requestGPS;
+
+  // === BCV: Tasa de cambio automatica ===
+  async function fetchTasaBCV() {
+    try {
+      const resp = await fetch('https://ve.dolarapi.com/v1/dolares');
+      if (!resp.ok) throw new Error('BCV API error');
+      const data = await resp.json();
+      // Buscar la fuente oficial
+      const oficial = data.find(d => d.fuente === 'oficial') || data[0];
+      if (oficial && oficial.promedio) {
+        const nuevaTasa = parseFloat(oficial.promedio);
+        if (!isNaN(nuevaTasa) && nuevaTasa > 0) {
+          state.tasa = nuevaTasa;
+          localStorage.setItem('tasa', nuevaTasa);
+          const input = document.getElementById('tasa-input');
+          if (input) input.value = nuevaTasa.toFixed(2);
+          showToast('Tasa BCV actualizada: Bs. ' + nuevaTasa.toFixed(2), 'success');
+          return nuevaTasa;
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo obtener tasa BCV:', e.message);
+    }
+    return null;
+  }
+  window.fetchTasaBCV = fetchTasaBCV;
+
+  // Fetch BCV on load and every 5 minutes
+  fetchTasaBCV();
+  setInterval(fetchTasaBCV, 5 * 60 * 1000);
 
   // CARRUSEL: auto-avance + deslizamiento táctil y con ratón.
   // Soporta banners dinámicos por restaurante (carousel.refresh() re-ancora
