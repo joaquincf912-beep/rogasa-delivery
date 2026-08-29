@@ -2018,23 +2018,34 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   // === GPS PERMISSION ON LOAD ===
   function showGPSPermission() {
     if (localStorage.getItem('gps_permission_asked')) return;
-    setTimeout(() => {
-      document.getElementById('sheet-overlay').classList.add('active');
-      document.getElementById('sheet-gps-perm').classList.add('active');
-    }, 800);
+    // Mostrar inmediatamente — sin delay
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-gps-perm').classList.add('active');
   }
   function allowGPS() {
     localStorage.setItem('gps_permission_asked', 'granted');
-    closeSheets();
+    // Cambiar boton a estado de carga
+    const btn = document.getElementById('gps-allow-btn');
+    btn.textContent = 'Obteniendo ubicacion...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    // Pedir GPS PRIMERO — esto dispara el popup nativo del navegador
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           state.gps = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          showToast('Ubicacion activada correctamente', 'success');
+          closeSheets();
+          showToast('Ubicacion activada — llegara con tu pedido', 'success');
         },
-        () => { showToast('No se pudo obtener la ubicacion', 'error'); },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        () => {
+          closeSheets();
+          showToast('No se pudo obtener la ubicacion', 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
+    } else {
+      closeSheets();
+      showToast('Tu navegador no soporta GPS', 'error');
     }
   }
   function denyGPS() {
