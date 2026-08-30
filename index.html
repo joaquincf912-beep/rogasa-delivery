@@ -1288,6 +1288,7 @@
       </div>
       <div style="font-size:20px;font-family:var(--font-serif);font-weight:700;color:var(--c-text);margin-bottom:8px;">Ubicacion en Tiempo Real</div>
       <div style="font-size:14px;color:var(--c-text-2);line-height:1.5;margin-bottom:24px;">Para enviar tu direccion exacta al restaurante cuando hagas un pedido, necesitamos acceder a tu ubicacion GPS.</div>
+      <div id="gps-status" style="font-size:13px;color:var(--c-text-2);margin-bottom:12px;display:none;"></div>
       <button id="gps-allow-btn" class="btn-primary" style="margin-bottom:12px;">Permitir Ubicacion</button>
       <button id="gps-deny-btn" class="btn-outline" onclick="denyGPS()">Ahora No</button>
     </div>
@@ -2016,61 +2017,64 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   }
   loadTenantData();
 
-  // === GPS PERMISSION ON LOAD ===
-  function showGPSPermission() {
-    if (localStorage.getItem('gps_permission_asked')) return;
-    // Mostrar inmediatamente — sin delay
-    document.getElementById('sheet-overlay').classList.add('active');
-    document.getElementById('sheet-gps-perm').classList.add('active');
+  // === GPS SYSTEM ===
+  function _setGPSStatus(text) {
+    const el = document.getElementById('gps-status');
+    if(el) { el.style.display = 'block'; el.textContent = text; }
   }
-  function allowGPS() {
-    localStorage.setItem('gps_permission_asked', 'granted');
-    // Cambiar boton a estado de carga
-    const btn = document.getElementById('gps-allow-btn');
-    btn.textContent = 'Obteniendo ubicacion...';
-    btn.disabled = true;
-    btn.style.opacity = '0.7';
-    // Pedir GPS PRIMERO — esto dispara el popup nativo del navegador
-    if (navigator.geolocation) {
+  function _captureGPSonce(opts) {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve(null); return; }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           state.gps = coords;
           localStorage.setItem('gps_coords', JSON.stringify(coords));
-          closeSheets();
-          showToast('Ubicacion activada — llegara con tu pedido', 'success');
+          resolve(coords);
         },
-        () => {
-          closeSheets();
-          showToast('No se pudo obtener la ubicacion', 'error');
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        () => resolve(null),
+        opts || { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
       );
+    });
+  }
+  function showGPSPermission(force) {
+    if (!force && localStorage.getItem('gps_permission_asked')) return;
+    document.getElementById('sheet-overlay').classList.add('active');
+    document.getElementById('sheet-gps-perm').classList.add('active');
+  }
+  async function allowGPS() {
+    localStorage.setItem('gps_permission_asked', 'granted');
+    const btn = document.getElementById('gps-allow-btn');
+    btn.textContent = 'Obteniendo ubicacion...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    _setGPSStatus('Buscando senal GPS...');
+    const coords = await _captureGPSonce({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    if (coords) {
+      _setGPSStatus('Ubicacion capturada correctamente');
+      setTimeout(() => { closeSheets(); }, 400);
+      showToast('Ubicacion activada — llegara con tu pedido', 'success');
     } else {
-      closeSheets();
-      showToast('Tu navegador no soporta GPS', 'error');
+      _setGPSStatus('No se pudo obtener la ubicacion. Intenta de nuevo.');
+      btn.textContent = 'Reintentar';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      showToast('No se pudo obtener GPS. Verifica los permisos del navegador.', 'error');
     }
   }
   function denyGPS() {
     localStorage.setItem('gps_permission_asked', 'denied');
     closeSheets();
-    showToast('Sin ubicacion GPS — puedes pedirla al hacer tu pedido');
+    showToast('Sin ubicacion GPS');
   }
   window.allowGPS = allowGPS;
   window.denyGPS = denyGPS;
   document.getElementById('gps-allow-btn').addEventListener('click', allowGPS);
   showGPSPermission();
 
-  // Si el usuario ya acepto GPS antes, refrescar ubicacion automaticamente al cargar
-  if (localStorage.getItem('gps_permission_asked') === 'granted' && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        state.gps = coords;
-        localStorage.setItem('gps_coords', JSON.stringify(coords));
-      }, () => {},
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-    );
+  // Si ya acepto GPS antes, refrescar ubicacion automaticamente al cargar
+  if (localStorage.getItem('gps_permission_asked') === 'granted') {
+    _captureGPSonce({ enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 });
   }
 
   // NAVIGATION
@@ -2658,6 +2662,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         </div>
       </div>
 
+      <div id="cart-gps-status" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:13px;cursor:pointer;" onclick="showGPSPermission(true)"></div>
       <button class="btn-primary" onclick="checkout()">Confirmar Pedido</button>
     `;
 
@@ -2675,9 +2680,23 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     if(pMoneda) pMoneda.value = prevPay.moneda;
     if(pBillete) pBillete.value = prevPay.billete;
     if(pRef) pRef.value = prevPay.ref;
+
+    // Actualizar indicador GPS en carrito
+    const gpsEl = document.getElementById('cart-gps-status');
+    if(gpsEl) {
+      if(state.gps) {
+        gpsEl.style.background = 'rgba(40,167,69,0.15)';
+        gpsEl.style.border = '1px solid rgba(40,167,69,0.3)';
+        gpsEl.innerHTML = '<span style="color:#28a745;">\u2713</span> <span style="color:#28a745;font-weight:600;">GPS Activo</span> <span style="color:var(--c-text-2);">— tu ubicacion se enviara con el pedido</span>';
+      } else {
+        gpsEl.style.background = 'rgba(255,152,0,0.12)';
+        gpsEl.style.border = '1px solid rgba(255,152,0,0.3)';
+        gpsEl.innerHTML = '<span style="color:#FF9800;">\u26A0</span> <span style="color:#FF9800;font-weight:600;">GPS Inactivo</span> <span style="color:var(--c-text-2);">— toca para enviar tu ubicacion</span>';
+      }
+    }
   }
 
-  function checkout() {
+  async function checkout() {
     const name = Security ? Security.sanitizeInput(document.getElementById('c-name')?.value) : document.getElementById('c-name')?.value;
     const phone = document.getElementById('c-phone')?.value;
     const sector = Security ? Security.sanitizeInput(document.getElementById('c-sector')?.value) : document.getElementById('c-sector')?.value;
@@ -2762,14 +2781,18 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       creado_en: new Date().toISOString()
     };
 
-    // GPS: usar ubicacion ya capturada
-    const gps = state.gps || null;
+    // GPS: intentar capturar si no tenemos
+    let gps = state.gps || null;
+    if (!gps && navigator.geolocation) {
+      showToast('Buscando tu ubicacion...', 'info');
+      gps = await _captureGPSonce({ enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 });
+    }
     if (gps) {
       pedido.gps_lat = gps.lat;
       pedido.gps_lng = gps.lng;
     }
 
-    // Construir mensaje WhatsApp INMEDIATO (sin esperar nada)
+    // Construir mensaje WhatsApp
     const trackUrl = trackUrlFor(pedido.id);
     let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -2799,25 +2822,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     msg += `Sigue tu pedido en vivo:\n${trackUrl}\n\n`;
     msg += `${CONFIG.nombre} — Gracias por tu preferencia.`;
 
-    // Abrir WhatsApp INMEDIATO — sin esperar GPS ni Firebase
+    // Abrir WhatsApp — GPS ya incluido si esta disponible
     window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
-
-    // GPS en background: si no tenemos GPS, intentar capturar y actualizar Firebase
-    if (!gps && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          const coords = { lat, lng };
-          state.gps = coords;
-          localStorage.setItem('gps_coords', JSON.stringify(coords));
-          pedido.gps_lat = lat;
-          pedido.gps_lng = lng;
-          // Actualizar el pedido en Firebase con GPS
-          db.crearPedido(pedido).catch(() => {});
-        }, () => {},
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
-      );
-    }
 
     ensureFCM(pedido.id);
 
