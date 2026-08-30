@@ -1110,6 +1110,12 @@
         <input type="text" id="ad-cfg-dir" placeholder="Dirección (opcional)">
         <input type="text" id="ad-cfg-horario" placeholder="Horario (opcional)">
         <input type="text" id="ad-cfg-logo" placeholder="URL del logo (opcional, p. ej: https://...)">
+        <div class="subtitle" style="margin-top:16px">Ubicacion del Restaurante (GPS para delivery dinamico)</div>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="ad-cfg-lat" step="any" placeholder="Latitud (ej: 9.5808)" style="flex:1;">
+          <input type="number" id="ad-cfg-lng" step="any" placeholder="Longitud (ej: -68.0347)" style="flex:1;">
+        </div>
+        <button class="btn-outline" type="button" onclick="navigator.geolocation.getCurrentPosition(p => { document.getElementById('ad-cfg-lat').value = p.coords.latitude.toFixed(6); document.getElementById('ad-cfg-lng').value = p.coords.longitude.toFixed(6); showToast('Ubicacion capturada', 'success'); }, () => showToast('No se pudo obtener GPS', 'error'))" style="margin-top:8px;font-size:12px;">Usar mi ubicacion actual</button>
         <div class="subtitle" style="margin-top:16px">Datos de Pago Móvil (los ve el cliente al pagar)</div>
         <input type="text" id="ad-cfg-pm-banco" placeholder="Banco (ej: Banco de Venezuela)">
         <input type="tel" id="ad-cfg-pm-tel" placeholder="Teléfono (ej: 0422-5604660)">
@@ -1341,6 +1347,8 @@
     delivery: 2,
     direccion: '',
     horario: '',
+    rest_lat: null,
+    rest_lng: null,
     logo: '',
     pm_banco: 'Banco de Venezuela',
     pm_telefono: '0422-5604660',
@@ -2185,6 +2193,30 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     searchTimer = setTimeout(renderMenu, 120);
   }
 
+  // === HAVERSINE: Distancia entre dos puntos GPS en km ===
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radio de la Tierra en km
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  // Delivery dinamico: base $1, +$0.50/km, max $5
+  function calcDynamicDelivery(distKm) {
+    const base = 1.00;
+    const perKm = 0.50;
+    const max = 5.00;
+    const fee = base + (distKm * perKm);
+    return Math.min(fee, max);
+  }
+
+  // Tiempo estimado de entrega en minutos: 10 base + 3 min/km
+  function calcDeliveryMinutes(distKm) {
+    return Math.round(10 + distKm * 3);
+  }
+
   function formatBs(usd) { return `Bs. ${(usd * state.tasa).toFixed(2)}`; }
   function isSoldOut(id) { return state.soldOut.includes(id); }
   function getDish(id) { return MENU.find(d => d.id === id); }
@@ -2596,7 +2628,16 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     });
     html += `</div>`;
 
-    const totalConDelivery = totalUsd + CONFIG.delivery;
+    // Delivery dinamico segun distancia GPS
+    let cartDeliveryFee = CONFIG.delivery;
+    let cartDistKm = 0;
+    let cartDeliveryMin = 10;
+    if (state.gps && CONFIG.rest_lat && CONFIG.rest_lng) {
+      cartDistKm = haversineKm(CONFIG.rest_lat, CONFIG.rest_lng, state.gps.lat, state.gps.lng);
+      cartDeliveryFee = calcDynamicDelivery(cartDistKm);
+      cartDeliveryMin = calcDeliveryMinutes(cartDistKm);
+    }
+    const totalConDelivery = totalUsd + cartDeliveryFee;
 
     html += `
       <div class="section-title">Datos de Entrega</div>
@@ -2639,6 +2680,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
         <div class="pay-detail-box">
           <div class="pay-detail-title">Pago en Efectivo</div>
           <div class="pm-total">Total a pagar: $${totalConDelivery.toFixed(2)} / ${formatBs(totalConDelivery)}</div>
+          ${cartDistKm > 0 ? `<div style="font-size:12px;color:var(--c-text-2);margin-top:6px;">Distancia: ${cartDistKm.toFixed(1)} km · Tiempo estimado: ~${cartDeliveryMin} min</div>` : ''}
           <label class="pm-label-block" for="pay-moneda">¿En qué moneda pagarás?</label>
           <select id="pay-moneda">
             <option value="bs" ${prevPay.moneda === 'bs' ? 'selected' : ''}>Bolívares (Bs.)</option>
@@ -2651,7 +2693,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
 
       <div class="summary-box">
         <div class="summary-row"><span>Subtotal</span><span>$${totalUsd.toFixed(2)}</span></div>
-        <div class="summary-row"><span>Delivery</span><span>$${CONFIG.delivery.toFixed(2)}</span></div>
+        <div class="summary-row"><span>Delivery${cartDistKm > 0 ? ` (${cartDistKm.toFixed(1)} km)` : ''}</span><span>$${cartDeliveryFee.toFixed(2)}</span></div>
         <div class="summary-total">
           <span>Total</span>
           <div>
@@ -2747,7 +2789,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     }
 
     const cartItems = state.cart.map(i => ({ ...i }));
-    const totalUsd = cartItems.reduce((s,i) => s + (i.price * i.q), 0) + CONFIG.delivery;
+    const subtotalItems = cartItems.reduce((s,i) => s + (i.price * i.q), 0);
     const items = cartItems.map(i => ({id: i.id, nombre: i.name, cantidad: i.q, precio: i.price}));
     
     // Obtener siguiente número de cola (1-50)
@@ -2792,6 +2834,20 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       pedido.gps_lng = gps.lng;
     }
 
+    // HAVERSINE: calcular distancia y delivery dinamico
+    let distKm = 0;
+    let deliveryFee = CONFIG.delivery;
+    let deliveryMin = 10;
+    if (gps && CONFIG.rest_lat && CONFIG.rest_lng) {
+      distKm = haversineKm(CONFIG.rest_lat, CONFIG.rest_lng, gps.lat, gps.lng);
+      deliveryFee = calcDynamicDelivery(distKm);
+      deliveryMin = calcDeliveryMinutes(distKm);
+      pedido.distancia_km = Math.round(distKm * 100) / 100;
+      pedido.delivery_fee = deliveryFee;
+      pedido.tiempo_estimado_min = deliveryMin;
+    }
+    const totalUsd = subtotalItems + deliveryFee;
+
     // Construir mensaje WhatsApp
     const trackUrl = trackUrlFor(pedido.id);
     let msg = `*${CONFIG.nombre.toUpperCase()} — Pedido a Domicilio*\n`;
@@ -2803,6 +2859,10 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     if (gps) {
       msg += `*Ubicacion GPS:* https://www.google.com/maps?q=${gps.lat},${gps.lng}\n`;
     }
+    if (distKm > 0) {
+      msg += `*Distancia:* ${distKm.toFixed(1)} km del restaurante\n`;
+      msg += `*Tiempo estimado:* ~${deliveryMin} min\n`;
+    }
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `*Detalle del Pedido:*\n\n`;
     cartItems.forEach(i => {
@@ -2812,9 +2872,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       msg += `     $${lineUsd} / Bs. ${lineBs}\n\n`;
     });
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    const subtotalUsd = totalUsd - CONFIG.delivery;
-    msg += `*Subtotal:*  $${subtotalUsd.toFixed(2)} / Bs. ${(subtotalUsd * state.tasa).toFixed(2)}\n`;
-    msg += `*Delivery:*  $${CONFIG.delivery.toFixed(2)} / Bs. ${(CONFIG.delivery * state.tasa).toFixed(2)}\n`;
+    msg += `*Subtotal:*  $${subtotalItems.toFixed(2)} / Bs. ${(subtotalItems * state.tasa).toFixed(2)}\n`;
+    msg += `*Delivery:*  $${deliveryFee.toFixed(2)} / Bs. ${(deliveryFee * state.tasa).toFixed(2)}${distKm > 0 ? ` (${distKm.toFixed(1)} km)` : ''}\n`;
     msg += `*TOTAL:*  *$${totalUsd.toFixed(2)}* / *Bs. ${(totalUsd * state.tasa).toFixed(2)}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `${payMsg}`;
@@ -2950,6 +3009,7 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
           Dir: ${p.ubicacion}<br>
           ${(p.metodo_pago || '').toUpperCase()} - $${((p.total_usd || 0)).toFixed(2)} / Bs. ${((p.total_bs) || (p.total_usd || 0) * 45).toFixed(2)}
           ${p.gps_lat && p.gps_lng ? `<br><a href="https://www.google.com/maps?q=${p.gps_lat},${p.gps_lng}" target="_blank" style="color:var(--c-emerald);font-weight:600;">Ver ubicacion GPS</a>` : ''}
+          ${p.distancia_km ? `<br><span style="color:var(--c-gold);font-weight:600;">${p.distancia_km} km · ~${p.tiempo_estimado_min || '?'} min</span>` : ''}
         </div>
         <div class="order-items">
           ${(p.items || []).map(i => `<div class="order-item"><span class="order-item-q">${i.cantidad || i.q || 1}x</span><span>${i.nombre || i.name}</span></div>`).join('')}
@@ -3533,6 +3593,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     $('ad-cfg-dir').value = CONFIG.direccion || '';
     $('ad-cfg-horario').value = CONFIG.horario || '';
     $('ad-cfg-logo').value = CONFIG.logo || '';
+    $('ad-cfg-lat').value = CONFIG.rest_lat || '';
+    $('ad-cfg-lng').value = CONFIG.rest_lng || '';
     $('ad-cfg-pm-banco').value = CONFIG.pm_banco || '';
     $('ad-cfg-pm-tel').value = CONFIG.pm_telefono || '';
     $('ad-cfg-pm-ced').value = CONFIG.pm_cedula || '';
@@ -3709,6 +3771,8 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       direccion: $('ad-cfg-dir').value.trim(),
       horario: $('ad-cfg-horario').value.trim(),
       logo: $('ad-cfg-logo').value.trim(),
+      rest_lat: parseFloat($('ad-cfg-lat').value) || null,
+      rest_lng: parseFloat($('ad-cfg-lng').value) || null,
       pm_banco: $('ad-cfg-pm-banco').value.trim(),
       pm_telefono: $('ad-cfg-pm-tel').value.trim(),
       pm_cedula: $('ad-cfg-pm-ced').value.trim()
