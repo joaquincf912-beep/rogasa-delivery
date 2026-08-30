@@ -1591,6 +1591,7 @@
     payMethod: 'efectivo',
     dismissedOrders: JSON.parse(localStorage.getItem('dismissed_orders') || '[]'),
     trackingId: localStorage.getItem('last_delivery_tracking_id') || null,
+    gps: JSON.parse(localStorage.getItem('gps_coords') || 'null'),
     trackingSubId: null,
     adminOrders: [],
     adminSubscribed: false,
@@ -2033,7 +2034,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          state.gps = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          state.gps = coords;
+          localStorage.setItem('gps_coords', JSON.stringify(coords));
           closeSheets();
           showToast('Ubicacion activada — llegara con tu pedido', 'success');
         },
@@ -2057,6 +2060,18 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
   window.denyGPS = denyGPS;
   document.getElementById('gps-allow-btn').addEventListener('click', allowGPS);
   showGPSPermission();
+
+  // Si el usuario ya acepto GPS antes, refrescar ubicacion automaticamente al cargar
+  if (localStorage.getItem('gps_permission_asked') === 'granted' && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        state.gps = coords;
+        localStorage.setItem('gps_coords', JSON.stringify(coords));
+      }, () => {},
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+    );
+  }
 
   // NAVIGATION
   function switchTab(tabId) {
@@ -2792,7 +2807,9 @@ pCADw4FUfBnWhpLB3Kjvh7KT3MVfVqjs5J6Gazwy0u1Rm1OTSf+FGAr5hw6WvhrU
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          state.gps = { lat, lng };
+          const coords = { lat, lng };
+          state.gps = coords;
+          localStorage.setItem('gps_coords', JSON.stringify(coords));
           pedido.gps_lat = lat;
           pedido.gps_lng = lng;
           // Actualizar el pedido en Firebase con GPS
